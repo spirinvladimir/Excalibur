@@ -477,7 +477,7 @@ module ex {
        * By default all actors use the SeparatingAxis strategy.
        * @property collisionStrategy: {CollisionStrategy}
        */
-      public collisionStrategy: CollisionStrategy = CollisionStrategy.SeparatingAxis;
+      public collisionStrategy: CollisionStrategy = CollisionStrategy.AxisAligned;
 
       public collisionGroups : string[] = [];
 
