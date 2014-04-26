@@ -36,17 +36,17 @@ describe("A Bounding Box", ()=>{
 
       expect(bb.contains(new ex.Point(10,10))).toBe(true);
 
-      expect(bb.contains(new ex.Point(0, 0))).toBe(true);
+      expect(bb.contains(new ex.Point(0, 0))).toBe(false);
 
-      expect(bb.contains(new ex.Point(20, 20))).toBe(true);
+      expect(bb.contains(new ex.Point(20, 20))).toBe(false);
 
       expect(bb.contains(new ex.Point(21, 20))).toBe(false);
       expect(bb.contains(new ex.Point(20, 21))).toBe(false);
       
       expect(bb.contains(new ex.Point(0, -1))).toBe(false);
       expect(bb.contains(new ex.Point(-1, 0))).toBe(false);
-      expect(bb.contains(new ex.Point(10, 0))).toBe(true);
-      expect(bb.contains(new ex.Point(10, 20))).toBe(true);
+      expect(bb.contains(new ex.Point(10, 0))).toBe(false);
+      expect(bb.contains(new ex.Point(10, 20))).toBe(false);
    });
 
    it('can collide with other bounding boxes', ()=>{

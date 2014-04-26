@@ -1,3 +1,43 @@
+/*! excalibur - v0.2.2 - 2014-04-26
+* https://github.com/excaliburjs/Excalibur
+* Copyright (c) 2014 ; Licensed BSD*/
+if (typeof window == 'undefined') {
+    window = { audioContext: function () {
+        } };
+}
+
+if (typeof window != 'undefined' && !window.requestAnimationFrame) {
+    window.requestAnimationFrame = window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || function (callback) {
+        window.setInterval(callback, 1000 / 60);
+    };
+}
+
+if (typeof window != 'undefined' && !window.AudioContext) {
+    window.AudioContext = window.webkitAudioContext || window.mozAudioContext;
+}
+
+// Polyfill from https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/some
+if (!Array.prototype.some) {
+    Array.prototype.some = function (fun /*, thisArg */ ) {
+        'use strict';
+
+        if (this === void 0 || this === null)
+            throw new TypeError();
+
+        var t = Object(this);
+        var len = t.length >>> 0;
+        if (typeof fun !== 'function')
+            throw new TypeError();
+
+        var thisArg = arguments.length >= 2 ? arguments[1] : void 0;
+        for (var i = 0; i < len; i++) {
+            if (i in t && fun.call(thisArg, t[i], i, t))
+                return true;
+        }
+
+        return false;
+    };
+}
 var __extends = this.__extends || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -19,6 +59,47 @@ var ex;
             this.x = x;
             this.y = y;
         }
+        /**
+        * X Coordinate of the point
+        * @property x {number}
+        */
+        /**
+        * Y Coordinate of the point
+        * @property y {number}
+        */
+        /**
+        * Convert this point to a vector
+        * @method toVector
+        * @returns Vector
+        */
+        Point.prototype.toVector = function () {
+            return new Vector(this.x, this.y);
+        };
+
+        /**
+        * Rotates the current point around another by a certain number of
+        * degrees in radians
+        * @method rotate
+        * @returns Point
+        */
+        Point.prototype.rotate = function (angle, anchor) {
+            if (!anchor) {
+                anchor = new ex.Point(0, 0);
+            }
+            var x = (this.x - anchor.x) * Math.cos(angle) + anchor.x;
+            var y = (this.y - anchor.y) * Math.sin(angle) + anchor.y;
+
+            return new Point(x, y);
+        };
+
+        /**
+        * Translates the current point by a vector
+        * @method add
+        * @returns Point
+        */
+        Point.prototype.add = function (vector) {
+            return new Point(this.x + vector.x, this.y + vector.y);
+        };
         return Point;
     })();
     ex.Point = Point;
@@ -38,6 +119,17 @@ var ex;
             this.x = x;
             this.y = y;
         }
+        /**
+        * Returns a vector of unit length in the direction of the specified angle.
+        * @method fromAngle
+        * @static
+        * @param angle {number} The angle to generate the vector
+        * @returns Vector
+        */
+        Vector.fromAngle = function (angle) {
+            return new Vector(Math.cos(angle), Math.sin(angle));
+        };
+
         /**
         * The distance to another vector
         * @method distance
@@ -114,47 +206,174 @@ var ex;
         Vector.prototype.cross = function (v) {
             return this.x * v.y - this.y * v.x;
         };
+
+        /**
+        * Returns the perpendicular vector to this one
+        * @method perpendicular
+        * @return Vector
+        */
+        Vector.prototype.perpendicular = function () {
+            return new Vector(this.y, -this.x);
+        };
+
+        /**
+        * Returns the normal vector to this one
+        * @method normal
+        * @return Vector
+        */
+        Vector.prototype.normal = function () {
+            return this.perpendicular().normalize();
+        };
+
+        /**
+        * Returns the angle of this vector.
+        * @method toAngle
+        * @returns number
+        */
+        Vector.prototype.toAngle = function () {
+            return Math.atan2(this.y, this.x);
+        };
+
+        /**
+        * Returns the point represention of this vector
+        * @method toPoint
+        * @returns Point
+        */
+        Vector.prototype.toPoint = function () {
+            return new Point(this.x, this.y);
+        };
+
+        /**
+        * Rotates the current vector around a point by a certain number of
+        * degrees in radians
+        * @method rotate
+        * @returns Vector
+        */
+        Vector.prototype.rotate = function (angle, anchor) {
+            return _super.prototype.rotate.call(this, angle, anchor).toVector();
+        };
         return Vector;
     })(Point);
     ex.Vector = Vector;
-})(ex || (ex = {}));
-if (typeof window == 'undefined') {
-    window = { audioContext: function () {
-        } };
-}
 
-if (typeof window != 'undefined' && !window.requestAnimationFrame) {
-    window.requestAnimationFrame = window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || function (callback) {
-        window.setInterval(callback, 1000 / 60);
-    };
-}
-
-if (typeof window != 'undefined' && !window.AudioContext) {
-    window.AudioContext = window.webkitAudioContext || window.mozAudioContext;
-}
-
-// Polyfill from https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/some
-if (!Array.prototype.some) {
-    Array.prototype.some = function (fun /*, thisArg */ ) {
-        'use strict';
-
-        if (this === void 0 || this === null)
-            throw new TypeError();
-
-        var t = Object(this);
-        var len = t.length >>> 0;
-        if (typeof fun !== 'function')
-            throw new TypeError();
-
-        var thisArg = arguments.length >= 2 ? arguments[1] : void 0;
-        for (var i = 0; i < len; i++) {
-            if (i in t && fun.call(thisArg, t[i], i, t))
-                return true;
+    /**
+    * A 2D ray that can be cast into the scene to do collision detection
+    * @class Ray
+    * @constructor
+    * @param pos {Point} The starting position for the ray
+    * @param dir {Vector} The vector indicating the direction of the ray
+    */
+    var Ray = (function () {
+        function Ray(pos, dir) {
+            this.pos = pos;
+            this.dir = dir.normalize();
         }
+        /**
+        * Tests a whether this ray intersects with a line segment. Returns a number greater than or equal to 0 on success.
+        * This number indicates the mathematical intersection time.
+        * @method intersect
+        * @param line {Line} The line to test
+        * @returns number
+        */
+        Ray.prototype.intersect = function (line) {
+            var numerator = line.begin.toVector().minus(this.pos.toVector());
 
-        return false;
-    };
-}
+            // Test is line and ray are parallel and non intersecting
+            if (this.dir.cross(line.getSlope()) === 0 && numerator.cross(this.dir) !== 0) {
+                return -1;
+            }
+
+            // Lines are parallel
+            var divisor = (this.dir.cross(line.getSlope()));
+            if (divisor === 0) {
+                return -1;
+            }
+
+            var t = numerator.cross(line.getSlope()) / divisor;
+
+            if (t >= 0) {
+                var u = (numerator.cross(this.dir) / divisor) / line.getLength();
+                if (u >= 0 && u <= 1) {
+                    return t;
+                }
+            }
+            return -1;
+        };
+
+        /**
+        * Returns the point of intersection given the intersection time
+        * @method getPoint
+        * @returns Point
+        */
+        Ray.prototype.getPoint = function (time) {
+            return this.pos.toVector().add(this.dir.scale(time)).toPoint();
+        };
+        return Ray;
+    })();
+    ex.Ray = Ray;
+
+    /**
+    * A 2D line segment
+    * @class Line
+    * @constructor
+    * @param begin {Point} The starting point of the line segment
+    * @param end {Point} The ending point of the line segment
+    */
+    var Line = (function () {
+        function Line(begin, end) {
+            this.begin = begin;
+            this.end = end;
+        }
+        /**
+        * Returns the slope of the line in the form of a vector
+        * @method getSlope
+        * @returns Vector
+        */
+        Line.prototype.getSlope = function () {
+            var begin = this.begin.toVector();
+            var end = this.end.toVector();
+            var distance = begin.distance(end);
+            return end.minus(begin).scale(1 / distance);
+        };
+
+        /**
+        * Returns the length of the line segment in pixels
+        * @method getLength
+        * @returns number
+        */
+        Line.prototype.getLength = function () {
+            var begin = this.begin.toVector();
+            var end = this.end.toVector();
+            var distance = begin.distance(end);
+            return distance;
+        };
+        return Line;
+    })();
+    ex.Line = Line;
+
+    var Projection = (function () {
+        function Projection(min, max) {
+            this.min = min;
+            this.max = max;
+        }
+        Projection.prototype.overlaps = function (projection) {
+            return this.max > projection.min && projection.max > this.min;
+        };
+
+        Projection.prototype.getOverlap = function (projection) {
+            if (this.overlaps(projection)) {
+                if (this.max > projection.max) {
+                    return projection.max - this.min;
+                } else {
+                    return this.max - projection.min;
+                }
+            }
+            return 0;
+        };
+        return Projection;
+    })();
+    ex.Projection = Projection;
+})(ex || (ex = {}));
 var ex;
 (function (ex) {
     /**
@@ -409,2525 +628,6 @@ var ex;
         return ScreenAppender;
     })();
     ex.ScreenAppender = ScreenAppender;
-})(ex || (ex = {}));
-/// <reference path="Algebra.ts"/>
-/// <reference path="Events.ts"/>
-var ex;
-(function (ex) {
-    (function (Util) {
-        /**
-        * Excalibur base class
-        * @class Class
-        * @constructor
-        */
-        var Class = (function () {
-            function Class() {
-                this.eventDispatcher = new ex.EventDispatcher(this);
-            }
-            /**
-            * Add an event listener. You can listen for a variety of
-            * events off of the engine; see the events section below for a complete list.
-            * @method addEventListener
-            * @param eventName {string} Name of the event to listen for
-            * @param handler {event=>void} Event handler for the thrown event
-            */
-            Class.prototype.addEventListener = function (eventName, handler) {
-                this.eventDispatcher.subscribe(eventName, handler);
-            };
-
-            /**
-            * Removes an event listener. If only the eventName is specified
-            * it will remove all handlers registered for that specific event. If the eventName
-            * and the handler instance are specified just that handler will be removed.
-            *
-            * @method removeEventListener
-            * @param eventName {string} Name of the event to listen for
-            * @param [handler=undefined] {event=>void} Event handler for the thrown event
-            */
-            Class.prototype.removeEventListener = function (eventName, handler) {
-                this.eventDispatcher.unsubscribe(eventName, handler);
-            };
-
-            /**
-            * Alias for "addEventListener". You can listen for a variety of
-            * events off of the engine; see the events section below for a complete list.
-            * @method on
-            * @param eventName {string} Name of the event to listen for
-            * @param handler {event=>void} Event handler for the thrown event
-            */
-            Class.prototype.on = function (eventName, handler) {
-                this.eventDispatcher.subscribe(eventName, handler);
-            };
-
-            /**
-            * Alias for "removeEventListener". If only the eventName is specified
-            * it will remove all handlers registered for that specific event. If the eventName
-            * and the handler instance are specified only that handler will be removed.
-            *
-            * @method off
-            * @param eventName {string} Name of the event to listen for
-            * @param [handler=undefined] {event=>void} Event handler for the thrown event
-            */
-            Class.prototype.off = function (eventName, handler) {
-                this.eventDispatcher.unsubscribe(eventName, handler);
-            };
-
-            /**
-            * You may wish to extend native Excalibur functionality. Any method on
-            * actor may be extended to support additional functionaliy. In the
-            * example below we create a new type called "MyActor"
-            * <br/><b>Example</b><pre>var MyActor = Actor.extend({
-            constructor : function(){
-            this.newprop = 'something';
-            Actor.apply(this, arguments);
-            },
-            update : function(engine, delta){
-            // Implement custom update
-            
-            // Call super constructor update
-            Actor.prototype.update.call(this, engine, delta);
-            console.log("Something cool!");
-            }
-            });
-            var myActor = new MyActor(100, 100, 100, 100, Color.Azure);</pre>
-            * @method extend
-            * @static
-            * @param methods {any}
-            */
-            Class.extend = function (methods) {
-                var parent = this;
-                var child;
-
-                if (methods && methods.hasOwnProperty('constructor')) {
-                    child = methods.constructor;
-                } else {
-                    child = function () {
-                        return parent.apply(this, arguments);
-                    };
-                }
-
-                // Using constructor allows JS to lazily instantiate super classes
-                var Super = function () {
-                    this.constructor = child;
-                };
-                Super.prototype = parent.prototype;
-                child.prototype = new Super;
-
-                if (methods) {
-                    for (var prop in methods) {
-                        if (methods.hasOwnProperty(prop)) {
-                            child.prototype[prop] = methods[prop];
-                        }
-                    }
-                }
-
-                // Make subclasses extendable
-                child.extend = Class.extend;
-
-                return child;
-            };
-            return Class;
-        })();
-        Util.Class = Class;
-
-        function base64Encode(inputStr) {
-            var b64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
-            var outputStr = "";
-            var i = 0;
-
-            while (i < inputStr.length) {
-                //all three "& 0xff" added below are there to fix a known bug
-                //with bytes returned by xhr.responseText
-                var byte1 = inputStr.charCodeAt(i++) & 0xff;
-                var byte2 = inputStr.charCodeAt(i++) & 0xff;
-                var byte3 = inputStr.charCodeAt(i++) & 0xff;
-
-                var enc1 = byte1 >> 2;
-                var enc2 = ((byte1 & 3) << 4) | (byte2 >> 4);
-
-                var enc3, enc4;
-                if (isNaN(byte2)) {
-                    enc3 = enc4 = 64;
-                } else {
-                    enc3 = ((byte2 & 15) << 2) | (byte3 >> 6);
-                    if (isNaN(byte3)) {
-                        enc4 = 64;
-                    } else {
-                        enc4 = byte3 & 63;
-                    }
-                }
-
-                outputStr += b64.charAt(enc1) + b64.charAt(enc2) + b64.charAt(enc3) + b64.charAt(enc4);
-            }
-
-            return outputStr;
-        }
-        Util.base64Encode = base64Encode;
-
-        function clamp(val, min, max) {
-            return val <= min ? min : (val >= max ? max : val);
-        }
-        Util.clamp = clamp;
-
-        function drawLine(ctx, color, startx, starty, endx, endy) {
-            ctx.beginPath();
-            ctx.strokeStyle = color;
-            ctx.moveTo(startx, starty);
-            ctx.lineTo(endx, endy);
-            ctx.closePath();
-            ctx.stroke();
-        }
-        Util.drawLine = drawLine;
-
-        function randomInRange(min, max) {
-            return min + Math.random() * (max - min);
-        }
-        Util.randomInRange = randomInRange;
-
-        function getPosition(el) {
-            var oLeft = 0, oTop = 0;
-
-            var calcOffsetLeft = function (parent) {
-                oLeft += parent.offsetLeft;
-
-                if (parent.offsetParent) {
-                    calcOffsetLeft(parent.offsetParent);
-                }
-            };
-            var calcOffsetTop = function (parent) {
-                oTop += parent.offsetTop;
-                if (parent.offsetParent) {
-                    calcOffsetTop(parent.offsetParent);
-                }
-            };
-
-            calcOffsetLeft(el);
-            calcOffsetTop(el);
-
-            return new ex.Point(oLeft, oTop);
-        }
-        Util.getPosition = getPosition;
-
-        function getOppositeSide(side) {
-            if (side === 1 /* Top */)
-                return 2 /* Bottom */;
-            if (side === 2 /* Bottom */)
-                return 1 /* Top */;
-            if (side === 3 /* Left */)
-                return 4 /* Right */;
-            if (side === 4 /* Right */)
-                return 3 /* Left */;
-
-            return 0 /* None */;
-        }
-        Util.getOppositeSide = getOppositeSide;
-
-        /**
-        * Excaliburs dynamically resizing collection
-        * @class Collection
-        * @constructor
-        * @param [initialSize=200] {number} Initial size of the internal backing array
-        */
-        var Collection = (function () {
-            function Collection(initialSize) {
-                this.internalArray = null;
-                this.endPointer = 0;
-                var size = initialSize || Collection.DefaultSize;
-                this.internalArray = new Array(size);
-            }
-            Collection.prototype.resize = function () {
-                var newSize = this.internalArray.length * 2;
-                var newArray = new Array(newSize);
-                var count = this.count();
-                for (var i = 0; i < count; i++) {
-                    newArray[i] = this.internalArray[i];
-                }
-
-                delete this.internalArray;
-                this.internalArray = newArray;
-            };
-
-            /**
-            * Push elements to the end of the collection
-            * @method push
-            * @param element {T}
-            * @returns T
-            */
-            Collection.prototype.push = function (element) {
-                if (this.endPointer === this.internalArray.length) {
-                    this.resize();
-                }
-                return this.internalArray[this.endPointer++] = element;
-            };
-
-            /**
-            * Removes elements from the end of the collection
-            * @method pop
-            * @returns T
-            */
-            Collection.prototype.pop = function () {
-                this.endPointer = this.endPointer - 1 < 0 ? 0 : this.endPointer - 1;
-                return this.internalArray[this.endPointer];
-            };
-
-            /**
-            * Returns the count of the collection
-            * @method count
-            * @returns number
-            */
-            Collection.prototype.count = function () {
-                return this.endPointer;
-            };
-
-            /**
-            * Empties the collection
-            * @method clear
-            */
-            Collection.prototype.clear = function () {
-                this.endPointer = 0;
-            };
-
-            /**
-            * Returns the size of the internal backing array
-            * @method internalSize
-            * @returns number
-            */
-            Collection.prototype.internalSize = function () {
-                return this.internalArray.length;
-            };
-
-            /**
-            * Returns an element at a specific index
-            * @method elementAt
-            * @param index {number} Index of element to retreive
-            * @returns T
-            */
-            Collection.prototype.elementAt = function (index) {
-                if (index >= this.count()) {
-                    return;
-                }
-                return this.internalArray[index];
-            };
-
-            /**
-            * Inserts an element at a specific index
-            * @method insert
-            * @param index {number} Index to insert the element
-            * @returns T
-            */
-            Collection.prototype.insert = function (index, value) {
-                if (index >= this.count()) {
-                    this.resize();
-                }
-                return this.internalArray[index] = value;
-            };
-
-            /**
-            * Removes an element at a specific index
-            * @method remove
-            * @param index {number} Index of element to remove
-            * @returns T
-            */
-            Collection.prototype.remove = function (index) {
-                var count = this.count();
-                if (count === 0)
-                    return;
-
-                // O(n) Shift
-                var removed = this.internalArray[index];
-                for (var i = index; i < count; i++) {
-                    this.internalArray[i] = this.internalArray[i + 1];
-                }
-                this.endPointer--;
-                return removed;
-            };
-
-            /**
-            * Removes an element by reference
-            * @method removeElement
-            * @param element {T} Index of element to retreive
-            */
-            Collection.prototype.removeElement = function (element) {
-                var index = this.internalArray.indexOf(element);
-                this.remove(index);
-            };
-
-            /**
-            * Returns a array representing the collection
-            * @method toArray
-            * @returns T[]
-            */
-            Collection.prototype.toArray = function () {
-                return this.internalArray.slice(0, this.endPointer);
-            };
-
-            /**
-            * Iterate over every element in the collection
-            * @method forEach
-            * @param func {(T,number)=>any} Callback to call for each element passing a reference to the element and its index, returned values are ignored
-            */
-            Collection.prototype.forEach = function (func) {
-                var count = this.count();
-                for (var i = 0; i < count; i++) {
-                    func.call(this, this.internalArray[i], i);
-                }
-            };
-
-            /**
-            * Mutate every element in the collection
-            * @method map
-            * @param func {(T,number)=>any} Callback to call for each element passing a reference to the element and its index, any values returned mutate the collection
-            */
-            Collection.prototype.map = function (func) {
-                var count = this.count();
-                for (var i = 0; i < count; i++) {
-                    this.internalArray[i] = func.call(this, this.internalArray[i], i);
-                }
-            };
-            Collection.DefaultSize = 200;
-            return Collection;
-        })();
-        Util.Collection = Collection;
-    })(ex.Util || (ex.Util = {}));
-    var Util = ex.Util;
-})(ex || (ex = {}));
-/// <reference path="Core.ts" />
-var ex;
-(function (ex) {
-    /**
-    * A light-weight object that occupies a space in a collision map. Generally
-    * created by a CollisionMap.
-    * @class Cell
-    * @constructor
-    * @param x {number}
-    * @param y {number}
-    * @param width {number}
-    * @param height {number}
-    * @param index {number}
-    * @param [solid=false] {boolean}
-    * @param [spriteId=-1] {number}
-    */
-    var Cell = (function () {
-        function Cell(/**
-        * Gets or sets x coordinate of the cell in world coordinates
-        * @property x {number}
-        */
-        x, /**
-        * Gets or sets y coordinate of the cell in world coordinates
-        * @property y {number}
-        */
-        y, /**
-        * Gets or sets the width of the cell
-        * @property width {number}
-        */
-        width, /**
-        * Gets or sets the height of the cell
-        * @property height {number}
-        */
-        height, /**
-        * The index of the cell in row major order
-        * @property index {number}
-        */
-        index, /**
-        * Gets or sets whether this cell is solid
-        * @property solid {boolean}
-        */
-        solid, /**
-        * The index of the sprite to use from the CollisionMap SpriteSheet, if -1 is specified nothing is drawn.
-        * @property number {number}
-        */
-        spriteId) {
-            if (typeof solid === "undefined") { solid = false; }
-            if (typeof spriteId === "undefined") { spriteId = -1; }
-            this.x = x;
-            this.y = y;
-            this.width = width;
-            this.height = height;
-            this.index = index;
-            this.solid = solid;
-            this.spriteId = spriteId;
-            this._bounds = new ex.BoundingBox(this.x, this.y, this.x + this.width, this.y + this.height);
-        }
-        /**
-        * Returns the bounding box for this cell
-        * @method getBounds
-        * @returns BoundingBox
-        */
-        Cell.prototype.getBounds = function () {
-            return this._bounds;
-        };
-        return Cell;
-    })();
-    ex.Cell = Cell;
-
-    /**
-    * The CollisionMap object provides a lightweight way to do large complex scenes with collision
-    * without the overhead of actors.
-    * @class CollisionMap
-    * @param x {number} The x coordinate to anchor the collision map's upper left corner (should not be changed once set)
-    * @param y {number} The y coordinate to anchor the collision map's upper left corner (should not be changed once set)
-    * @param cellWidth {number} The individual width of each cell (in pixels) (should not be changed once set)
-    * @param cellHeight {number} The individual height of each cell (in pixels) (should not be changed once set)
-    * @param rows {number} The number of rows in the collision map (should not be changed once set)
-    * @param cols {number} The number of cols in the collision map (should not be changed once set)
-    * @param spriteSheet {SpriteSheet} The spriteSheet to use for drawing
-    */
-    var CollisionMap = (function () {
-        function CollisionMap(x, y, cellWidth, cellHeight, rows, cols, spriteSheet) {
-            var _this = this;
-            this.x = x;
-            this.y = y;
-            this.cellWidth = cellWidth;
-            this.cellHeight = cellHeight;
-            this.rows = rows;
-            this.cols = cols;
-            this.spriteSheet = spriteSheet;
-            this._collidingX = -1;
-            this._collidingY = -1;
-            this._onScreenXStart = 0;
-            this._onScreenXEnd = 9999;
-            this._onScreenYStart = 0;
-            this._onScreenYEnd = 9999;
-            this.data = [];
-            this.data = new Array(rows * cols);
-            for (var i = 0; i < cols; i++) {
-                for (var j = 0; j < rows; j++) {
-                    (function () {
-                        var cd = new Cell(i * cellWidth + x, j * cellHeight + y, cellWidth, cellHeight, i + j * cols);
-                        _this.data[i + j * cols] = cd;
-                    })();
-                }
-            }
-        }
-        /**
-        * Returns the intesection vector that can be used to resolve collisions with actors. If there
-        * is no collision null is returned.
-        * @method collides
-        * @param actor {Actor}
-        * @returns Vector
-        */
-        CollisionMap.prototype.collides = function (actor) {
-            var points = [];
-            var width = actor.x + actor.getWidth();
-            var height = actor.y + actor.getHeight();
-            var actorBounds = actor.getBounds();
-
-            var overlaps = [];
-
-            for (var x = actor.x; x <= width; x += Math.min(actor.getWidth() / 2, this.cellWidth / 2)) {
-                for (var y = actor.y; y <= height; y += Math.min(actor.getHeight() / 2, this.cellHeight / 2)) {
-                    var cell = this.getCellByPoint(x, y);
-                    var xover = 0;
-                    var yover = 0;
-                    if (cell && cell.solid) {
-                        var overlap = actorBounds.collides(cell.getBounds());
-                        if (overlap) {
-                            overlaps.push(overlap);
-                        }
-                    }
-                }
-            }
-
-            if (overlaps.length === 0) {
-                return null;
-            }
-
-            // Return the smallest change other than zero
-            var result = overlaps.reduce(function (accum, next) {
-                var x = accum.x;
-                var y = accum.y;
-
-                if (Math.abs(accum.x) < Math.abs(next.x)) {
-                    x = next.x;
-                }
-
-                if (Math.abs(accum.y) < Math.abs(next.y)) {
-                    y = next.y;
-                }
-                return new ex.Vector(x, y);
-            });
-
-            return result;
-        };
-
-        /*
-        public collidesActor(actor: Actor): boolean{
-        
-        var points: Point[] = [];
-        var width = actor.x + actor.getWidth();
-        var height = actor.y + actor.getHeight();
-        for(var x = actor.x; x <= width; x += Math.min(actor.getWidth()/2,this.cellWidth/2)){
-        for(var y = actor.y; y <= height; y += Math.min(actor.getHeight()/2, this.cellHeight/2)){
-        points.push(new Point(x,y))
-        }
-        }
-        
-        var result = points.some((p) => {
-        return this.collidesPoint(p.x, p.y);
-        });
-        
-        return result;
-        
-        }*/
-        /*
-        public collidesPoint(x: number, y: number): boolean{
-        var x = Math.floor(x/this.cellWidth);// - Math.floor(this.x/this.cellWidth);
-        var y = Math.floor(y/this.cellHeight);
-        
-        
-        var cell = this.getCell(x, y);
-        if(x >= 0 && y >= 0 && x < this.cols && y < this.rows && cell){
-        if(cell.solid){
-        this._collidingX = x;
-        this._collidingY = y;
-        }
-        return cell.solid;
-        }
-        
-        
-        
-        
-        return false;
-        }*/
-        /**
-        * Returns the cell by index (row major order)
-        * @method getCellByIndex
-        * @param index {number}
-        * @returns Cell
-        */
-        CollisionMap.prototype.getCellByIndex = function (index) {
-            return this.data[index];
-        };
-
-        /**
-        * Returns the cell by it's x and y coordinates
-        * @method getCell
-        * @param x {number}
-        * @param y {number}
-        * @returns Cell
-        */
-        CollisionMap.prototype.getCell = function (x, y) {
-            if (x < 0 || y < 0 || x >= this.cols || y >= this.rows) {
-                return null;
-            }
-
-            return this.data[x + y * this.cols];
-        };
-
-        /**
-        * Returns the cell by testing a point in global coordinates,
-        * returns null if no cell was found.
-        * @method getCellByPoint
-        * @param x {number}
-        * @param y {number}
-        * @returns Cell
-        */
-        CollisionMap.prototype.getCellByPoint = function (x, y) {
-            var x = Math.floor((x - this.x) / this.cellWidth);
-            var y = Math.floor((y - this.y) / this.cellHeight);
-
-            var cell = this.getCell(x, y);
-            if (x >= 0 && y >= 0 && x < this.cols && y < this.rows && cell) {
-                return cell;
-            }
-
-            return null;
-        };
-
-        CollisionMap.prototype.update = function (engine, delta) {
-            var worldCoordsUpperLeft = engine.screenToWorldCoordinates(new ex.Point(0, 0));
-            var worldCoordsLowerRight = engine.screenToWorldCoordinates(new ex.Point(engine.width, engine.height));
-
-            this._onScreenXStart = Math.max(Math.floor(worldCoordsUpperLeft.x / this.cellWidth) - 2, 0);
-            this._onScreenYStart = Math.max(Math.floor((worldCoordsUpperLeft.y - this.y) / this.cellHeight), 0);
-            this._onScreenXEnd = Math.max(Math.floor(worldCoordsLowerRight.x / this.cellWidth), 0);
-            this._onScreenYEnd = Math.max(Math.floor((worldCoordsLowerRight.y - this.y) / this.cellHeight) + 1, 0);
-        };
-
-        /**
-        * Draws the collision map to the screen. Called by the Scene.
-        * @method draw
-        * @param ctx {CanvasRenderingContext2D} The current rendering context
-        * @param delta {number} The number of milliseconds since the last draw
-        */
-        CollisionMap.prototype.draw = function (ctx, delta) {
-            ctx.save();
-            ctx.translate(this.x, this.y);
-
-            for (var x = this._onScreenXStart; x < Math.min(this._onScreenXEnd, this.cols); x++) {
-                for (var y = this._onScreenYStart; y < Math.min(this._onScreenYEnd, this.rows); y++) {
-                    var spriteId = this.getCell(x, y).spriteId;
-                    if (spriteId > -1) {
-                        this.spriteSheet.getSprite(spriteId).draw(ctx, x * this.cellWidth, y * this.cellHeight);
-                    }
-                }
-            }
-            ctx.restore();
-        };
-
-        /**
-        * Draws all the collision map's debug info. Called by the Scene.
-        * @method draw
-        * @param ctx {CanvasRenderingContext2D} The current rendering context
-        */
-        CollisionMap.prototype.debugDraw = function (ctx) {
-            var width = this.cols * this.cellWidth;
-            var height = this.rows * this.cellHeight;
-
-            ctx.save();
-
-            ctx.strokeStyle = ex.Color.Red.toString();
-            for (var x = 0; x < this.cols + 1; x++) {
-                ctx.beginPath();
-                ctx.moveTo(this.x + x * this.cellWidth, this.y);
-                ctx.lineTo(this.x + x * this.cellWidth, this.y + height);
-                ctx.stroke();
-            }
-            for (var y = 0; y < this.rows + 1; y++) {
-                ctx.beginPath();
-                ctx.moveTo(this.x, this.y + y * this.cellHeight);
-                ctx.lineTo(this.x + width, this.y + y * this.cellHeight);
-                ctx.stroke();
-            }
-
-            if (this._collidingY > -1 && this._collidingX > -1) {
-                ctx.fillStyle = ex.Color.Cyan.toString();
-                ctx.fillRect(this.x + this._collidingX * this.cellWidth, this.y + this._collidingY * this.cellHeight, this.cellWidth, this.cellHeight);
-            }
-            ctx.restore();
-        };
-        return CollisionMap;
-    })();
-    ex.CollisionMap = CollisionMap;
-})(ex || (ex = {}));
-/// <reference path="Algebra.ts" />
-var ex;
-(function (ex) {
-    
-
-    /**
-    * Axis Aligned collision primitive for Excalibur.
-    * @class BoundingBox
-    * @constructor
-    * @param left {number} x coordinate of the left edge
-    * @param top {number} y coordinate of the top edge
-    * @param right {number} x coordinate of the right edge
-    * @param bottom {number} y coordinate of the bottom edge
-    */
-    var BoundingBox = (function () {
-        function BoundingBox(left, top, right, bottom) {
-            this.left = left;
-            this.top = top;
-            this.right = right;
-            this.bottom = bottom;
-        }
-        /**
-        * Returns the calculated width of the bounding box
-        * @method getWidth
-        * @returns number
-        */
-        BoundingBox.prototype.getWidth = function () {
-            return this.right - this.left;
-        };
-
-        /**
-        * Returns the calculated height of the bounding box
-        * @method getHeight
-        * @returns number
-        */
-        BoundingBox.prototype.getHeight = function () {
-            return this.bottom - this.top;
-        };
-
-        /**
-        * Tests wether a point is contained within the bounding box
-        * @method contains
-        * @param p {Point} The point to test
-        * @returns boolean
-        */
-        BoundingBox.prototype.contains = function (p) {
-            return (this.left <= p.x && this.top <= p.y && this.bottom >= p.y && this.right >= p.x);
-        };
-
-        /**
-        * Test wether this bounding box collides with another returning,
-        * the intersection vector that can be used to resovle the collision. If there
-        * is no collision null is returned.
-        * @method collides
-        * @param collidable {ICollidable} Other collidable to test
-        * @returns Vector
-        */
-        BoundingBox.prototype.collides = function (collidable) {
-            if (collidable instanceof BoundingBox) {
-                var other = collidable;
-                var totalBoundingBox = new BoundingBox(Math.min(this.left, other.left), Math.min(this.top, other.top), Math.max(this.right, other.right), Math.max(this.bottom, other.bottom));
-
-                // If the total bounding box is less than the sum of the 2 bounds then there is collision
-                if (totalBoundingBox.getWidth() < other.getWidth() + this.getWidth() && totalBoundingBox.getHeight() < other.getHeight() + this.getHeight()) {
-                    // collision
-                    var overlapX = 0;
-                    if (this.right > other.left && this.right < other.right) {
-                        overlapX = other.left - this.right;
-                    } else {
-                        overlapX = other.right - this.left;
-                    }
-
-                    var overlapY = 0;
-                    if (this.top < other.bottom && this.top > other.top) {
-                        overlapY = other.bottom - this.top;
-                    } else {
-                        overlapY = other.top - this.bottom;
-                    }
-                    return new ex.Vector(overlapX, overlapY);
-                } else {
-                    return null;
-                }
-            }
-
-            return null;
-        };
-        return BoundingBox;
-    })();
-    ex.BoundingBox = BoundingBox;
-})(ex || (ex = {}));
-/// <reference path="Core.ts" />
-/// <reference path="Algebra.ts" />
-/// <reference path="Util.ts" />
-/// <reference path="CollisionMap.ts" />
-/// <reference path="BoundingBox.ts" />
-var ex;
-(function (ex) {
-    var Overlap = (function () {
-        function Overlap(x, y) {
-            this.x = x;
-            this.y = y;
-        }
-        return Overlap;
-    })();
-    ex.Overlap = Overlap;
-
-    /**
-    * Actors are composed together into groupings called Scenes in
-    * Excalibur. The metaphor models the same idea behind real world
-    * actors in a scene. Only actors in scenes will be updated and drawn.
-    * @class Scene
-    * @constructor
-    */
-    var Scene = (function (_super) {
-        __extends(Scene, _super);
-        function Scene() {
-            _super.call(this);
-            /**
-            * The actors in the current scene
-            * @property children {Actor[]}
-            */
-            this.children = [];
-            this.collisionMaps = [];
-            this.killQueue = [];
-            this.timers = [];
-            this.cancelQueue = [];
-            this._isInitialized = false;
-        }
-        /**
-        * This is called when the scene is made active and started. It is meant to be overriden,
-        * this is where you should setup any DOM UI or event handlers needed for the scene.
-        * @method onActivate
-        */
-        Scene.prototype.onActivate = function () {
-            // will be overridden
-        };
-
-        /**
-        * This is called when the scene is made transitioned away from and stopped. It is meant to be overriden,
-        * this is where you should cleanup any DOM UI or event handlers needed for the scene.
-        * @method onDeactivate
-        */
-        Scene.prototype.onDeactivate = function () {
-            // will be overridden
-        };
-
-        /**
-        * This is called before the first update of the actor. This method is meant to be
-        * overridden. This is where initialization of child actors should take place.
-        * @method onInitialize
-        * @param engine {Engine}
-        */
-        Scene.prototype.onInitialize = function (engine) {
-            // will be overridden
-        };
-
-        /**
-        * Publish an event to all actors in the scene
-        * @method publish
-        * @param eventType {string} The name of the event to publish
-        * @param event {GameEvent} The event object to send
-        */
-        Scene.prototype.publish = function (eventType, event) {
-            this.children.forEach(function (actor) {
-                actor.triggerEvent(eventType, event);
-            });
-        };
-
-        /**
-        * Updates all the actors and timers in the Scene. Called by the Engine.
-        * @method update
-        * @param engine {Engine} Reference to the current Engine
-        * @param delta {number} The number of milliseconds since the last update
-        */
-        Scene.prototype.update = function (engine, delta) {
-            if (!this._isInitialized) {
-                this.onInitialize(engine);
-                this.eventDispatcher.publish('initialize', new ex.InitializeEvent(engine));
-                this._isInitialized = true;
-            }
-
-            this.collisionMaps.forEach(function (cm) {
-                cm.update(engine, delta);
-            });
-
-            // Update event dispatcher
-            this.eventDispatcher.update();
-
-            var len = 0;
-            var start = 0;
-            var end = 0;
-            var actor;
-
-            for (var i = 0, len = this.children.length; i < len; i++) {
-                this.children[i].update(engine, delta);
-            }
-
-            // Remove actors from scene graph after being killed
-            var actorIndex = 0;
-            for (var j = 0, len = this.killQueue.length; j < len; j++) {
-                actorIndex = this.children.indexOf(this.killQueue[j]);
-                if (actorIndex > -1) {
-                    this.children.splice(actorIndex, 1);
-                }
-            }
-            this.killQueue.length = 0;
-
-            // Remove timers in the cancel queue before updating them
-            var timerIndex = 0;
-            for (var k = 0, len = this.cancelQueue.length; k < len; k++) {
-                this.removeTimer(this.cancelQueue[k]);
-            }
-            this.cancelQueue.length = 0;
-
-            // Cycle through timers updating timers
-            var that = this;
-            this.timers = this.timers.filter(function (timer) {
-                timer.update(delta);
-                return !timer.complete;
-            });
-        };
-
-        /**
-        * Draws all the actors in the Scene. Called by the Engine.
-        * @method draw
-        * @param ctx {CanvasRenderingContext2D} The current rendering context
-        * @param delta {number} The number of milliseconds since the last draw
-        */
-        Scene.prototype.draw = function (ctx, delta) {
-            this.collisionMaps.forEach(function (cm) {
-                cm.draw(ctx, delta);
-            });
-
-            var len = 0;
-            var start = 0;
-            var end = 0;
-            var actor;
-            for (var i = 0, len = this.children.length; i < len; i++) {
-                actor = this.children[i];
-                this.children[i].draw(ctx, delta);
-            }
-        };
-
-        /**
-        * Draws all the actors' debug information in the Scene. Called by the Engine.
-        * @method draw
-        * @param ctx {CanvasRenderingContext2D} The current rendering context
-        */
-        Scene.prototype.debugDraw = function (ctx) {
-            this.collisionMaps.forEach(function (map) {
-                map.debugDraw(ctx);
-            });
-
-            this.children.forEach(function (actor) {
-                actor.debugDraw(ctx);
-            });
-        };
-
-        /**
-        * Adds an actor to the Scene, once this is done the actor will be drawn and updated.
-        * @method addChild
-        * @param actor {Actor} The actor to add
-        */
-        Scene.prototype.addChild = function (actor) {
-            actor.scene = this;
-            this.children.push(actor);
-            actor.parent = this.actor;
-        };
-
-        Scene.prototype.addCollisionMap = function (collisionMap) {
-            this.collisionMaps.push(collisionMap);
-        };
-
-        Scene.prototype.removeCollisionMap = function (collisionMap) {
-            var index = this.collisionMaps.indexOf(collisionMap);
-            if (index > -1) {
-                this.collisionMaps.splice(index, 1);
-            }
-        };
-
-        /**
-        * Removes an actor from the Scene, it will no longer be drawn or updated.
-        * @method removeChild
-        * @param actor {Actor} The actor to remove
-        */
-        Scene.prototype.removeChild = function (actor) {
-            this.killQueue.push(actor);
-            actor.parent = null;
-        };
-
-        /**
-        * Adds a timer to the Scene
-        * @method addTimer
-        * @param timer {Timer} The timer to add
-        * @returns Timer
-        */
-        Scene.prototype.addTimer = function (timer) {
-            this.timers.push(timer);
-            timer.scene = this;
-            return timer;
-        };
-
-        /**
-        * Removes a timer to the Scene, can be dangerous
-        * @method removeTimer
-        * @private
-        * @param timer {Timer} The timer to remove
-        * @returns Timer
-        */
-        Scene.prototype.removeTimer = function (timer) {
-            var i = this.timers.indexOf(timer);
-            if (i !== -1) {
-                this.timers.splice(i, 1);
-            }
-            return timer;
-        };
-
-        /**
-        * Cancels a timer, removing it from the scene nicely
-        * @method cancelTimer
-        * @param timer {Timer} The timer to cancel
-        * @returns Timer
-        */
-        Scene.prototype.cancelTimer = function (timer) {
-            this.cancelQueue.push(timer);
-            return timer;
-        };
-
-        /**
-        * Tests whether a timer is active in the scene
-        * @method isTimerActive
-        * @param timer {Timer}
-        * @returns boolean
-        */
-        Scene.prototype.isTimerActive = function (timer) {
-            return (this.timers.indexOf(timer) > -1);
-        };
-        return Scene;
-    })(ex.Util.Class);
-    ex.Scene = Scene;
-
-    /**
-    * An enum that describes the sides of an Actor for collision
-    * @class Side
-    */
-    (function (Side) {
-        /**
-        @property None {Side}
-        @static
-        @final
-        */
-        Side[Side["None"] = 0] = "None";
-
-        /**
-        @property Top {Side}
-        @static
-        @final
-        */
-        Side[Side["Top"] = 1] = "Top";
-
-        /**
-        @property Bottom {Side}
-        @static
-        @final
-        */
-        Side[Side["Bottom"] = 2] = "Bottom";
-
-        /**
-        @property Left {Side}
-        @static
-        @final
-        */
-        Side[Side["Left"] = 3] = "Left";
-
-        /**
-        @property Right {Side}
-        @static
-        @final
-        */
-        Side[Side["Right"] = 4] = "Right";
-    })(ex.Side || (ex.Side = {}));
-    var Side = ex.Side;
-
-    /**
-    * An enum that describes the types of collisions actors can participate in
-    * @class CollisionType
-    */
-    (function (CollisionType) {
-        /**
-        * Actors with the PreventCollision setting do not participate in any
-        * collisions and do not raise collision events.
-        * @property PreventCollision {CollisionType}
-        * @static
-        */
-        CollisionType[CollisionType["PreventCollision"] = 0] = "PreventCollision";
-
-        /**
-        * Actors with the Passive setting only raise collision events, but are not
-        * influenced or moved by other actors and do not influence or move other actors.
-        * @property Passive {CollisionType}
-        * @static
-        */
-        CollisionType[CollisionType["Passive"] = 1] = "Passive";
-
-        /**
-        * Actors with the Active setting raise collision events and participate
-        * in collisions with other actors and will be push or moved by actors sharing
-        * the Active or Fixed setting.
-        * @property Active {CollisionType}
-        * @static
-        */
-        CollisionType[CollisionType["Active"] = 2] = "Active";
-
-        /**
-        * Actors with the Elastic setting will behave the same as Active, except that they will
-        * "bounce" in the opposite direction given their velocity dx/dy. This is a naive implementation meant for
-        * prototyping, for a more robust elastic collision listen to the "collision" event and perform your custom logic.
-        * @property Elastic {CollisionType}
-        * @static
-        */
-        CollisionType[CollisionType["Elastic"] = 3] = "Elastic";
-
-        /**
-        * Actors with the Fixed setting raise collision events and participate in
-        * collisions with other actors. Actors with the Fixed setting will not be
-        * pushed or moved by other actors sharing the Fixed or Actors. Think of Fixed
-        * actors as "immovable/onstoppable" objects. If two Fixed actors meet they will
-        * not be pushed or moved by each other, they will not interact except to throw
-        * collision events.
-        * @property Fixed {CollisionType}
-        * @static
-        */
-        CollisionType[CollisionType["Fixed"] = 4] = "Fixed";
-    })(ex.CollisionType || (ex.CollisionType = {}));
-    var CollisionType = ex.CollisionType;
-
-    /**
-    * The most important primitive in Excalibur is an "Actor." Anything that
-    * can move on the screen, collide with another Actor, respond to events,
-    * or interact with the current scene, must be an actor. An Actor <b>must</b>
-    * be part of a {{#crossLink "Scene"}}{{/crossLink}} for it to be drawn to the screen.
-    * @class Actor
-    * @extends Class
-    * @constructor
-    * @param [x=0.0] {number} The starting x coordinate of the actor
-    * @param [y=0.0] {number} The starting y coordinate of the actor
-    * @param [width=0.0] {number} The starting width of the actor
-    * @param [height=0.0] {number} The starting height of the actor
-    * @param [color=undefined] {Color} The starting color of the actor
-    */
-    var Actor = (function (_super) {
-        __extends(Actor, _super);
-        function Actor(x, y, width, height, color) {
-            _super.call(this);
-            /**
-            * The x coordinate of the actor (left edge)
-            * @property x {number}
-            */
-            this.x = 0;
-            /**
-            * The y coordinate of the actor (top edge)
-            * @property y {number}
-            */
-            this.y = 0;
-            this.height = 0;
-            this.width = 0;
-            /**
-            * The rotation of the actor in radians
-            * @property rotation {number}
-            */
-            this.rotation = 0;
-            /**
-            * The rotational velocity of the actor in radians/second
-            * @property rx {number}
-            */
-            this.rx = 0;
-            /**
-            * The x scale of the actor
-            * @property scaleX {number}
-            */
-            this.scaleX = 1;
-            /**
-            * The y scale of the actor
-            * @property scaleY {number}
-            */
-            this.scaleY = 1;
-            /**
-            * The x scalar velocity of the actor in scale/second
-            * @property sx {number}
-            */
-            this.sx = 0;
-            /**
-            * The y scalar velocity of the actor in scale/second
-            * @property sy {number}
-            */
-            this.sy = 0;
-            /**
-            * The x velocity of the actor in pixels/second
-            * @property dx {number}
-            */
-            this.dx = 0;
-            /**
-            * The x velocity of the actor in pixels/second
-            * @property dx {number}
-            */
-            this.dy = 0;
-            /**
-            * The x acceleration of the actor in pixels/second^2
-            * @property ax {number}
-            */
-            this.ax = 0;
-            /**
-            * The y acceleration of the actor in pixels/second^2
-            * @property ay {number}
-            */
-            this.ay = 0;
-            /**
-            * Indicates wether the actor is physically in the viewport
-            * @property isOffScreen {boolean}
-            */
-            this.isOffScreen = false;
-            /**
-            * The visibility of an actor
-            * @property invisible {boolean}
-            */
-            this.invisible = false;
-            /**
-            * The opacity of an actor
-            * @property opacity {number}
-            */
-            this.opacity = 1;
-            this.previousOpacity = 1;
-            /**
-            * Convenience reference to the global logger
-            * @property logger {Logger}
-            */
-            this.logger = ex.Logger.getInstance();
-            /**
-            * The scene that the actor is in
-            * @property scene {Scene}
-            */
-            this.scene = null;
-            /**
-            * The parent of this actor
-            * @property parent {Actor}
-            */
-            this.parent = null;
-            /**
-            * Gets or sets the current collision type of this actor. By
-            * default all actors participate in Active collisions.
-            * @property collisionType {CollisionType}
-            */
-            this.collisionType = 2 /* Active */;
-            this.collisionGroups = [];
-            this._collisionHandlers = {};
-            this._isInitialized = false;
-            this.frames = {};
-            /**
-            * Access to the current drawing on for the actor, this can be an {{#crossLink "Animation"}}{{/crossLink}},
-            * {{#crossLink "Sprite"}}{{/crossLink}}, or {{#crossLink "Polygon"}}{{/crossLink}}.
-            * Set drawings with the {{#crossLink "Actor/setDrawing:method"}}{{/crossLink}}.
-            * @property currentDrawing {IDrawable}
-            */
-            this.currentDrawing = null;
-            this.centerDrawingX = false;
-            this.centerDrawingY = false;
-            this._isKilled = false;
-            this.x = x || 0;
-            this.y = y || 0;
-            this.width = width || 0;
-            this.height = height || 0;
-            this.color = color;
-            this.actionQueue = new ex.Internal.Actions.ActionQueue(this);
-            this.sceneNode = new Scene();
-            this.sceneNode.actor = this;
-        }
-        /**
-        * This is called before the first update of the actor. This method is meant to be
-        * overridden. This is where initialization of child actors should take place.
-        * @method onInitialize
-        * @param engine {Engine}
-        */
-        Actor.prototype.onInitialize = function (engine) {
-            // will be overridden
-        };
-
-        /**
-        * If the current actors is a member of the scene. This will remove
-        * it from the scene graph. It will no longer be drawn or updated.
-        * @method kill
-        */
-        Actor.prototype.kill = function () {
-            if (this.scene) {
-                this.scene.removeChild(this);
-                this._isKilled = true;
-            } else {
-                this.logger.warn("Cannot kill actor, it was never added to the Scene");
-            }
-        };
-
-        /**
-        * Adds a child actor to this actor. All movement of the child actor will be
-        * relative to the parent actor. Meaning if the parent moves the child will
-        * move with
-        * @method addChild
-        * @param actor {Actor} The child actor to add
-        */
-        Actor.prototype.addChild = function (actor) {
-            actor.collisionType = 0 /* PreventCollision */;
-            this.sceneNode.addChild(actor);
-        };
-
-        /**
-        * Removes a child actor from this actor.
-        * @method removeChild
-        * @param actor {Actor} The child actor to remove
-        */
-        Actor.prototype.removeChild = function (actor) {
-            this.sceneNode.removeChild(actor);
-        };
-
-        /**
-        * Sets the current drawing of the actor to the drawing correspoding to
-        * the key.
-        * @method setDrawing
-        * @param key {string} The key of the drawing
-        */
-        Actor.prototype.setDrawing = function (key) {
-            if (this.currentDrawing != this.frames[key]) {
-                this.frames[key].reset();
-            }
-            this.currentDrawing = this.frames[key];
-        };
-
-        /**
-        * Adds a drawing to the list of available drawings for an actor.
-        * @method addDrawing
-        * @param key {string} The key to associate with a drawing for this actor
-        * @param drawing {IDrawable} this can be an {{#crossLink "Animation"}}{{/crossLink}},
-        * {{#crossLink "Sprite"}}{{/crossLink}}, or {{#crossLink "Polygon"}}{{/crossLink}}.
-        */
-        Actor.prototype.addDrawing = function (key, drawing) {
-            this.frames[key] = drawing;
-            if (!this.currentDrawing) {
-                this.currentDrawing = drawing;
-            }
-        };
-
-        /**
-        * Artificially trigger an event on an actor, useful when creating custom events.
-        * @method triggerEvent
-        * @param eventName {string} The name of the event to trigger
-        * @param [event=undefined] {GameEvent} The event object to pass to the callback
-        */
-        Actor.prototype.triggerEvent = function (eventName, event) {
-            this.eventDispatcher.publish(eventName, event);
-        };
-
-        /**
-        * Adds an actor to a collision group. Actors with no named collision group are
-        * considered to be in every collision group.
-        *
-        * Once in a collision group(s) actors will only collide with other actors in
-        * that group.
-        *
-        * @method addCollisionGroup
-        * @param name {string} The name of the collision group
-        */
-        Actor.prototype.addCollisionGroup = function (name) {
-            this.collisionGroups.push(name);
-        };
-
-        /**
-        * Remove an actor from a collision group.
-        * @method removeCollisionGroup
-        * @param name {string} The name of the collision group
-        */
-        Actor.prototype.removeCollisionGroup = function (name) {
-            var index = this.collisionGroups.indexOf(name);
-            if (index !== -1) {
-                this.collisionGroups.splice(index, 1);
-            }
-        };
-
-        /**
-        * Get the center point of an actor
-        * @method getCenter
-        * @returns Vector
-        */
-        Actor.prototype.getCenter = function () {
-            return new ex.Vector(this.x + this.getWidth() / 2, this.y + this.getHeight() / 2);
-        };
-
-        /**
-        * Gets the calculated width of an actor
-        * @method getWidth
-        * @returns number
-        */
-        Actor.prototype.getWidth = function () {
-            return this.width * this.scaleX;
-        };
-
-        /**
-        * Sets the width of an actor, factoring in the current scale
-        * @method setWidth
-        */
-        Actor.prototype.setWidth = function (width) {
-            this.width = width / this.scaleX;
-        };
-
-        /**
-        * Gets the calculated height of an actor
-        * @method getHeight
-        * @returns number
-        */
-        Actor.prototype.getHeight = function () {
-            return this.height * this.scaleY;
-        };
-
-        /**
-        * Sets the height of an actor, factoring in the current scale
-        * @method setHeight
-        */
-        Actor.prototype.setHeight = function (height) {
-            this.height = height / this.scaleY;
-        };
-
-        /**
-        * Centers the actor's drawing around the center of the actor's bounding box
-        * @method setCenterDrawing
-        * @param center {boolean} Indicates to center the drawing around the actor
-        */
-        Actor.prototype.setCenterDrawing = function (center) {
-            this.centerDrawingY = true;
-            this.centerDrawingX = true;
-        };
-
-        /**
-        * Gets the left edge of the actor
-        * @method getLeft
-        * @returns number
-        */
-        Actor.prototype.getLeft = function () {
-            return this.x;
-        };
-
-        /**
-        * Gets the right edge of the actor
-        * @method getRight
-        * @returns number
-        */
-        Actor.prototype.getRight = function () {
-            return this.x + this.getWidth();
-        };
-
-        /**
-        * Gets the top edge of the actor
-        * @method getTop
-        * @returns number
-        */
-        Actor.prototype.getTop = function () {
-            return this.y;
-        };
-
-        /**
-        * Gets the bottom edge of the actor
-        * @method getBottom
-        * @returns number
-        */
-        Actor.prototype.getBottom = function () {
-            return this.y + this.getHeight();
-        };
-
-        /**
-        * Gets the x value of the Actor in global coordinates
-        * @method getGlobalX
-        * @returns number
-        */
-        Actor.prototype.getGlobalX = function () {
-            var previous;
-            var current = this.parent;
-            while (current) {
-                previous = current;
-                current = current.parent;
-            }
-            if (previous) {
-                return this.x + previous.x;
-            } else {
-                return this.x;
-            }
-        };
-
-        /**
-        * Gets the y value of the Actor in global coordinates
-        * @method getGlobalY
-        * @returns number
-        */
-        Actor.prototype.getGlobalY = function () {
-            var previous;
-            var current = this.parent;
-            while (current) {
-                previous = current;
-                current = current.parent;
-            }
-            if (previous) {
-                return this.y + previous.y;
-            } else {
-                return this.y;
-            }
-        };
-
-        /**
-        * Returns the actor's bounding box calculated for this instant.
-        * @method getBounds
-        * @returns BoundingBox
-        */
-        Actor.prototype.getBounds = function () {
-            return new ex.BoundingBox(this.getGlobalX(), this.getGlobalY(), this.getGlobalX() + this.getWidth(), this.getGlobalY() + this.getHeight());
-        };
-
-        /**
-        * Tests whether the x/y specified are contained in the actor
-        * @method contains
-        * @param x {number} X coordinate to test (in world coordinates)
-        * @param y {number} Y coordinate to test (in world coordinates)
-        */
-        Actor.prototype.contains = function (x, y) {
-            return this.getBounds().contains(new ex.Point(x, y));
-        };
-
-        /**
-        * Returns the side of the collision based on the intersection
-        * @method getSideFromIntersect
-        * @param intersect {Vector} The displacement vector returned by a collision
-        * @returns Side
-        */
-        Actor.prototype.getSideFromIntersect = function (intersect) {
-            if (intersect) {
-                if (Math.abs(intersect.x) < Math.abs(intersect.y)) {
-                    if (intersect.x < 0) {
-                        return 4 /* Right */;
-                    }
-                    return 3 /* Left */;
-                } else {
-                    if (intersect.y < 0) {
-                        return 2 /* Bottom */;
-                    }
-                    return 1 /* Top */;
-                }
-            }
-            return 0 /* None */;
-        };
-
-        /**
-        * Test whether the actor has collided with another actor, returns the side of the current actor that collided.
-        * @method collides
-        * @param actor {Actor} The other actor to test
-        * @returns Side
-        */
-        Actor.prototype.collidesWithSide = function (actor) {
-            return this.getSideFromIntersect(this.collides(actor));
-        };
-
-        /**
-        * Test whether the actor has collided with another actor, returns the intersection vector on collision. Returns
-        * null when there is no collision;
-        * @method collides
-        * @param actor {Actor} The other actor to test
-        * @returns Vector
-        */
-        Actor.prototype.collides = function (actor) {
-            var bounds = this.getBounds();
-            var otherBounds = actor.getBounds();
-
-            var intersect = bounds.collides(otherBounds);
-            return intersect;
-        };
-
-        /**
-        * Register a handler to fire when this actor collides with another in a specified group
-        * @method onCollidesWith
-        * @param group {string} The group name to listen for
-        * @param func {callback} The callback to fire on collision with another actor from the group. The callback is passed the other actor.
-        */
-        Actor.prototype.onCollidesWith = function (group, func) {
-            if (!this._collisionHandlers[group]) {
-                this._collisionHandlers[group] = [];
-            }
-            this._collisionHandlers[group].push(func);
-        };
-
-        /**
-        * Removes all collision handlers for this group on this actor
-        * @method removeCollidesWith
-        * @param group {string} Group to remove all handlers for on this actor.
-        */
-        Actor.prototype.removeCollidesWith = function (group) {
-            this._collisionHandlers[group] = [];
-        };
-
-        /**
-        * Returns true if the two actors are less than or equal to the distance specified from each other
-        * @method within
-        * @param actor {Actor} Actor to test
-        * @param distance {number} Distance in pixels to test
-        * @returns boolean
-        */
-        Actor.prototype.within = function (actor, distance) {
-            return Math.sqrt(Math.pow(this.x - actor.x, 2) + Math.pow(this.y - actor.y, 2)) <= distance;
-        };
-
-        /**
-        * Clears all queued actions from the Actor
-        * @method clearActions
-        */
-        Actor.prototype.clearActions = function () {
-            this.actionQueue.clearActions();
-        };
-
-        /**
-        * This method will move an actor to the specified x and y position at the
-        * speed specified (in pixels per second) and return back the actor. This
-        * method is part of the actor 'Action' fluent API allowing action chaining.
-        * @method moveTo
-        * @param x {number} The x location to move the actor to
-        * @param y {number} The y location to move the actor to
-        * @param speed {number} The speed in pixels per second to move
-        * @returns Actor
-        */
-        Actor.prototype.moveTo = function (x, y, speed) {
-            this.actionQueue.add(new ex.Internal.Actions.MoveTo(this, x, y, speed));
-            return this;
-        };
-
-        /**
-        * This method will move an actor to the specified x and y position by a
-        * certain time (in milliseconds). This method is part of the actor
-        * 'Action' fluent API allowing action chaining.
-        * @method moveBy
-        * @param x {number} The x location to move the actor to
-        * @param y {number} The y location to move the actor to
-        * @param time {number} The time it should take the actor to move to the new location in milliseconds
-        * @returns Actor
-        */
-        Actor.prototype.moveBy = function (x, y, time) {
-            this.actionQueue.add(new ex.Internal.Actions.MoveBy(this, x, y, time));
-            return this;
-        };
-
-        /**
-        * This method will rotate an actor to the specified angle at the speed
-        * specified (in radians per second) and return back the actor. This
-        * method is part of the actor 'Action' fluent API allowing action chaining.
-        * @method rotateTo
-        * @param angleRadians {number} The angle to rotate to in radians
-        * @param speed {number} The angular velocity of the rotation specified in radians per second
-        * @returns Actor
-        */
-        Actor.prototype.rotateTo = function (angleRadians, speed) {
-            this.actionQueue.add(new ex.Internal.Actions.RotateTo(this, angleRadians, speed));
-            return this;
-        };
-
-        /**
-        * This method will rotate an actor to the specified angle by a certain
-        * time (in milliseconds) and return back the actor. This method is part
-        * of the actor 'Action' fluent API allowing action chaining.
-        * @method rotateBy
-        * @param angleRadians {number} The angle to rotate to in radians
-        * @param time {number} The time it should take the actor to complete the rotation in milliseconds
-        * @returns Actor
-        */
-        Actor.prototype.rotateBy = function (angleRadians, time) {
-            this.actionQueue.add(new ex.Internal.Actions.RotateBy(this, angleRadians, time));
-            return this;
-        };
-
-        /**
-        * This method will scale an actor to the specified size at the speed
-        * specified (in magnitude increase per second) and return back the
-        * actor. This method is part of the actor 'Action' fluent API allowing
-        * action chaining.
-        * @method scaleTo
-        * @param size {number} The scaling factor to apply
-        * @param speed {number} The speed of scaling specified in magnitude increase per second
-        * @returns Actor
-        */
-        Actor.prototype.scaleTo = function (sizeX, sizeY, speedX, speedY) {
-            this.actionQueue.add(new ex.Internal.Actions.ScaleTo(this, sizeX, sizeY, speedX, speedY));
-            return this;
-        };
-
-        /**
-        * This method will scale an actor to the specified size by a certain time
-        * (in milliseconds) and return back the actor. This method is part of the
-        * actor 'Action' fluent API allowing action chaining.
-        * @method scaleBy
-        * @param size {number} The scaling factor to apply
-        * @param time {number} The time it should take to complete the scaling in milliseconds
-        * @returns Actor
-        */
-        Actor.prototype.scaleBy = function (sizeX, sizeY, time) {
-            this.actionQueue.add(new ex.Internal.Actions.ScaleBy(this, sizeX, sizeY, time));
-            return this;
-        };
-
-        /**
-        * This method will cause an actor to blink (become visible and and
-        * invisible) at a frequency (blinks per second) for a duration (in
-        * milliseconds). Optionally, you may specify blinkTime, which indicates
-        * the amount of time the actor is invisible during each blink.<br/>
-        * To have the actor blink 3 times in 1 second, call actor.blink(3, 1000).<br/>
-        * This method is part of the actor 'Action' fluent API allowing action chaining.
-        * @method blink
-        * @param frequency {number} The blinks per second
-        * @param duration {number} The total duration of the blinking specified in milliseconds
-        * @param [blinkTime=200] {number} The amount of time each blink that the actor is visible in milliseconds
-        * @returns Actor
-        */
-        Actor.prototype.blink = function (frequency, duration, blinkTime) {
-            this.actionQueue.add(new ex.Internal.Actions.Blink(this, frequency, duration, blinkTime));
-            return this;
-        };
-
-        /**
-        * This method will cause an actor's opacity to change from its current value
-        * to the provided value by a specified time (in milliseconds). This method is
-        * part of the actor 'Action' fluent API allowing action chaining.
-        * @method fade
-        * @param opacity {number} The ending opacity
-        * @param time {number} The time it should take to fade the actor (in milliseconds)
-        * @returns Actor
-        */
-        Actor.prototype.fade = function (opacity, time) {
-            this.actionQueue.add(new ex.Internal.Actions.Fade(this, opacity, time));
-            return this;
-        };
-
-        /**
-        * This method will delay the next action from executing for a certain
-        * amount of time (in milliseconds). This method is part of the actor
-        * 'Action' fluent API allowing action chaining.
-        * @method delay
-        * @param time {number} The amount of time to delay the next action in the queue from executing in milliseconds
-        * @returns Actor
-        */
-        Actor.prototype.delay = function (time) {
-            this.actionQueue.add(new ex.Internal.Actions.Delay(this, time));
-            return this;
-        };
-
-        /**
-        * This method will add an action to the queue that will remove the actor from the
-        * scene once it has completed its previous actions. Any actions on the
-        * action queue after this action will not be executed.
-        * @method die
-        * @returns Actor
-        */
-        Actor.prototype.die = function () {
-            this.actionQueue.add(new ex.Internal.Actions.Die(this));
-            return this;
-        };
-
-        /**
-        * This method allows you to call an arbitrary method as the next action in the
-        * action queue. This is useful if you want to execute code in after a specific
-        * action, i.e An actor arrives at a destinatino after traversing a path
-        * @method callMethod
-        * @returns Actor
-        */
-        Actor.prototype.callMethod = function (method) {
-            this.actionQueue.add(new ex.Internal.Actions.CallMethod(this, method));
-            return this;
-        };
-
-        /**
-        * This method will cause the actor to repeat all of the previously
-        * called actions a certain number of times. If the number of repeats
-        * is not specified it will repeat forever. This method is part of
-        * the actor 'Action' fluent API allowing action chaining
-        * @method repeat
-        * @param [times=undefined] {number} The number of times to repeat all the previous actions in the action queue. If nothing is specified the actions will repeat forever
-        * @returns Actor
-        */
-        Actor.prototype.repeat = function (times) {
-            if (!times) {
-                this.repeatForever();
-                return this;
-            }
-            this.actionQueue.add(new ex.Internal.Actions.Repeat(this, times, this.actionQueue.getActions()));
-
-            return this;
-        };
-
-        /**
-        * This method will cause the actor to repeat all of the previously
-        * called actions forever. This method is part of the actor 'Action'
-        * fluent API allowing action chaining.
-        * @method repeatForever
-        * @returns Actor
-        */
-        Actor.prototype.repeatForever = function () {
-            this.actionQueue.add(new ex.Internal.Actions.RepeatForever(this, this.actionQueue.getActions()));
-            return this;
-        };
-
-        /**
-        * This method will cause the actor to follow another at a specified distance
-        * @method follow
-        * @param actor {Actor} The actor to follow
-        * @param [followDistance=currentDistance] {number} The distance to maintain when following, if not specified the actor will follow at the current distance.
-        * @returns Actor
-        */
-        Actor.prototype.follow = function (actor, followDistance) {
-            if (followDistance == undefined) {
-                this.actionQueue.add(new ex.Internal.Actions.Follow(this, actor));
-            } else {
-                this.actionQueue.add(new ex.Internal.Actions.Follow(this, actor, followDistance));
-            }
-            return this;
-        };
-
-        /**
-        * This method will cause the actor to move towards another until they
-        * collide "meet" at a specified speed.
-        * @method meet
-        * @param actor {Actor} The actor to meet
-        * @param [speed=0] {number} The speed in pixels per second to move, if not specified it will match the speed of the other actor
-        * @returns Actor
-        */
-        Actor.prototype.meet = function (actor, speed) {
-            if (speed == undefined) {
-                this.actionQueue.add(new ex.Internal.Actions.Meet(this, actor));
-            } else {
-                this.actionQueue.add(new ex.Internal.Actions.Meet(this, actor, speed));
-            }
-            return this;
-        };
-
-        /**
-        * Called by the Engine, updates the state of the actor
-        * @method update
-        * @param engine {Engine} The reference to the current game engine
-        * @param delta {number} The time elapsed since the last update in milliseconds
-        */
-        Actor.prototype.update = function (engine, delta) {
-            var _this = this;
-            if (!this._isInitialized) {
-                this.onInitialize(engine);
-                this.eventDispatcher.publish('initialize', new ex.InitializeEvent(engine));
-                this._isInitialized = true;
-            }
-
-            this.sceneNode.update(engine, delta);
-            var eventDispatcher = this.eventDispatcher;
-
-            // Update event dispatcher
-            eventDispatcher.update();
-
-            // Update action queue
-            this.actionQueue.update(delta);
-
-            // Update placements based on linear algebra
-            this.x += this.dx * delta / 1000;
-            this.y += this.dy * delta / 1000;
-
-            this.dx += this.ax * delta / 1000;
-            this.dy += this.ay * delta / 1000;
-
-            this.rotation += this.rx * delta / 1000;
-
-            this.scaleX += this.sx * delta / 1000;
-            this.scaleY += this.sy * delta / 1000;
-
-            if (this.collisionType !== 0 /* PreventCollision */) {
-                // Retrieve the list of potential colliders, exclude killed, prevented, and self
-                var potentialColliders = engine.currentScene.children.filter(function (actor) {
-                    return !actor._isKilled && actor.collisionType !== 0 /* PreventCollision */ && _this !== actor;
-                });
-
-                for (var i = 0; i < potentialColliders.length; i++) {
-                    var intersectActor;
-                    var side;
-                    var collider = potentialColliders[i];
-
-                    if (intersectActor = this.collides(collider)) {
-                        side = this.getSideFromIntersect(intersectActor);
-
-                        // Publish collision events on both participants
-                        eventDispatcher.publish('collision', new ex.CollisionEvent(this, collider, side, intersectActor));
-                        collider.eventDispatcher.publish('collision', new ex.CollisionEvent(collider, this, ex.Util.getOppositeSide(side), intersectActor.scale(-1.0)));
-
-                        // Send collision group updates
-                        collider.collisionGroups.forEach(function (group) {
-                            if (_this._collisionHandlers[group]) {
-                                _this._collisionHandlers[group].forEach(function (handler) {
-                                    handler.call(_this, collider);
-                                });
-                            }
-                        });
-
-                        // If the actor is active push the actor out if its not passive
-                        if ((this.collisionType === 2 /* Active */ || this.collisionType === 3 /* Elastic */) && collider.collisionType !== 1 /* Passive */) {
-                            if (Math.abs(intersectActor.y) < Math.abs(intersectActor.x)) {
-                                this.y += intersectActor.y;
-                            } else {
-                                this.x += intersectActor.x;
-                            }
-
-                            // Naive elastic bounce
-                            if (this.collisionType === 3 /* Elastic */) {
-                                if (side === 3 /* Left */) {
-                                    this.dx = Math.abs(this.dx);
-                                } else if (side === 4 /* Right */) {
-                                    this.dx = -Math.abs(this.dx);
-                                } else if (side === 1 /* Top */) {
-                                    this.dy = Math.abs(this.dy);
-                                } else if (side === 2 /* Bottom */) {
-                                    this.dy = -Math.abs(this.dy);
-                                }
-                            }
-                        }
-                    }
-                }
-
-                for (var j = 0; j < engine.currentScene.collisionMaps.length; j++) {
-                    var map = engine.currentScene.collisionMaps[j];
-                    var intersectMap;
-                    var side = 0 /* None */;
-                    var max = 2;
-                    var hasBounced = false;
-
-                    while (intersectMap = map.collides(this)) {
-                        //iters.push(intersectMap);
-                        if (max-- < 0) {
-                            break;
-                        }
-                        side = this.getSideFromIntersect(intersectMap);
-                        eventDispatcher.publish('collision', new ex.CollisionEvent(this, null, side, intersectMap));
-                        if ((this.collisionType === 2 /* Active */ || this.collisionType === 3 /* Elastic */) && collider.collisionType !== 1 /* Passive */) {
-                            //var intersectMap = map.getOverlap(this);
-                            if (Math.abs(intersectMap.y) < Math.abs(intersectMap.x)) {
-                                this.y += intersectMap.y;
-                            } else {
-                                this.x += intersectMap.x;
-                            }
-
-                            // Naive elastic bounce
-                            if (this.collisionType === 3 /* Elastic */ && !hasBounced) {
-                                hasBounced = true;
-                                if (side === 3 /* Left */) {
-                                    this.dx = Math.abs(this.dx);
-                                } else if (side === 4 /* Right */) {
-                                    this.dx = -Math.abs(this.dx);
-                                } else if (side === 1 /* Top */) {
-                                    this.dy = Math.abs(this.dy);
-                                } else if (side === 2 /* Bottom */) {
-                                    this.dy = -Math.abs(this.dy);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Publish other events
-            engine.keys.forEach(function (key) {
-                eventDispatcher.publish(ex.InputKey[key], new ex.KeyEvent(key));
-            });
-
-            // Publish click events
-            engine.clicks.forEach(function (e) {
-                if (_this.contains(e.x, e.y)) {
-                    eventDispatcher.publish(ex.EventType[10 /* Click */], new ex.Click(e.x, e.y, e.mouseEvent));
-                    eventDispatcher.publish(ex.EventType[3 /* MouseDown */], new ex.MouseDown(e.x, e.y, e.mouseEvent));
-                }
-            });
-
-            engine.mouseMove.forEach(function (e) {
-                if (_this.contains(e.x, e.y)) {
-                    eventDispatcher.publish(ex.EventType[4 /* MouseMove */], new ex.MouseMove(e.x, e.y, e.mouseEvent));
-                }
-            });
-
-            engine.mouseUp.forEach(function (e) {
-                if (_this.contains(e.x, e.y)) {
-                    eventDispatcher.publish(ex.EventType[5 /* MouseUp */], new ex.MouseUp(e.x, e.y, e.mouseEvent));
-                }
-            });
-
-            engine.touchStart.forEach(function (e) {
-                if (_this.contains(e.x, e.y)) {
-                    eventDispatcher.publish(ex.EventType[6 /* TouchStart */], new ex.TouchStart(e.x, e.y));
-                }
-            });
-
-            engine.touchMove.forEach(function (e) {
-                if (_this.contains(e.x, e.y)) {
-                    eventDispatcher.publish(ex.EventType[7 /* TouchMove */], new ex.TouchMove(e.x, e.y));
-                }
-            });
-
-            engine.touchEnd.forEach(function (e) {
-                if (_this.contains(e.x, e.y)) {
-                    eventDispatcher.publish(ex.EventType[8 /* TouchEnd */], new ex.TouchEnd(e.x, e.y));
-                }
-            });
-
-            engine.touchCancel.forEach(function (e) {
-                if (_this.contains(e.x, e.y)) {
-                    eventDispatcher.publish(ex.EventType[9 /* TouchCancel */], new ex.TouchCancel(e.x, e.y));
-                }
-            });
-
-            var actorScreenCoords = engine.worldToScreenCoordinates(new ex.Point(this.getGlobalX(), this.getGlobalY()));
-            var zoom = 1.0;
-            if (engine.camera) {
-                zoom = engine.camera.getZoom();
-            }
-
-            if (!this.isOffScreen) {
-                if (actorScreenCoords.x + this.getWidth() * zoom < 0 || actorScreenCoords.y + this.getHeight() * zoom < 0 || actorScreenCoords.x > engine.width || actorScreenCoords.y > engine.height) {
-                    eventDispatcher.publish('exitviewport', new ex.ExitViewPortEvent());
-                    this.isOffScreen = true;
-                }
-            } else {
-                if (actorScreenCoords.x + this.getWidth() * zoom > 0 && actorScreenCoords.y + this.getHeight() * zoom > 0 && actorScreenCoords.x < engine.width && actorScreenCoords.y < engine.height) {
-                    eventDispatcher.publish('enterviewport', new ex.EnterViewPortEvent());
-                    this.isOffScreen = false;
-                }
-            }
-
-            eventDispatcher.publish(ex.EventType[16 /* Update */], new ex.UpdateEvent(delta));
-        };
-
-        /**
-        * Called by the Engine, draws the actor to the screen
-        * @method draw
-        * @param ctx {CanvasRenderingContext2D} The rendering context
-        * @param delta {number} The time since the last draw in milliseconds
-        */
-        Actor.prototype.draw = function (ctx, delta) {
-            // only draw if onscreen
-            if (this.isOffScreen)
-                return;
-
-            ctx.save();
-            ctx.translate(this.x, this.y);
-            ctx.rotate(this.rotation);
-            ctx.scale(this.scaleX, this.scaleY);
-
-            if (this.previousOpacity != this.opacity) {
-                for (var drawing in this.frames) {
-                    this.frames[drawing].addEffect(new ex.Effects.Opacity(this.opacity));
-                }
-
-                this.previousOpacity = this.opacity;
-            }
-
-            if (!this.invisible) {
-                if (this.currentDrawing) {
-                    var xDiff = 0;
-                    var yDiff = 0;
-                    if (this.centerDrawingX) {
-                        xDiff = (this.currentDrawing.width * this.currentDrawing.getScaleX() - this.width) / 2;
-                    }
-
-                    if (this.centerDrawingY) {
-                        yDiff = (this.currentDrawing.height * this.currentDrawing.getScaleY() - this.height) / 2;
-                    }
-
-                    //var xDiff = (this.currentDrawing.width*this.currentDrawing.getScale() - this.width)/2;
-                    //var yDiff = (this.currentDrawing.height*this.currentDrawing.getScale() - this.height)/2;
-                    this.currentDrawing.draw(ctx, -xDiff, -yDiff);
-                } else {
-                    if (this.color)
-                        this.color.a = this.opacity;
-                    ctx.fillStyle = this.color ? this.color.toString() : (new ex.Color(0, 0, 0)).toString();
-                    ctx.fillRect(0, 0, this.width, this.height);
-                }
-            }
-
-            this.sceneNode.draw(ctx, delta);
-
-            ctx.restore();
-        };
-
-        /**
-        * Called by the Engine, draws the actors debugging to the screen
-        * @method debugDraw
-        * @param ctx {CanvasRenderingContext2D} The rendering context
-        */
-        Actor.prototype.debugDraw = function (ctx) {
-            // Meant to draw debug information about actors
-            ctx.save();
-            ctx.translate(this.x, this.y);
-
-            ctx.fillStyle = ex.Color.Yellow.toString();
-            ctx.strokeStyle = ex.Color.Yellow.toString();
-            ctx.beginPath();
-            ctx.rect(0, 0, this.getWidth(), this.getHeight());
-            ctx.stroke();
-
-            this.sceneNode.debugDraw(ctx);
-            ctx.restore();
-        };
-        return Actor;
-    })(ex.Util.Class);
-    ex.Actor = Actor;
-
-    /**
-    * Enum representing the different horizontal text alignments
-    * @class TextAlign
-    */
-    (function (TextAlign) {
-        /**
-        * The text is left-aligned.
-        * @property Left
-        * @static
-        */
-        TextAlign[TextAlign["Left"] = 0] = "Left";
-
-        /**
-        * The text is right-aligned.
-        * @property Right
-        * @static
-        */
-        TextAlign[TextAlign["Right"] = 1] = "Right";
-
-        /**
-        * The text is centered.
-        * @property Center
-        * @static
-        */
-        TextAlign[TextAlign["Center"] = 2] = "Center";
-
-        /**
-        * The text is aligned at the normal start of the line (left-aligned for left-to-right locales, right-aligned for right-to-left locales).
-        * @property Start
-        * @static
-        */
-        TextAlign[TextAlign["Start"] = 3] = "Start";
-
-        /**
-        * The text is aligned at the normal end of the line (right-aligned for left-to-right locales, left-aligned for right-to-left locales).
-        * @property End
-        * @static
-        */
-        TextAlign[TextAlign["End"] = 4] = "End";
-    })(ex.TextAlign || (ex.TextAlign = {}));
-    var TextAlign = ex.TextAlign;
-
-    /**
-    * Enum representing the different baseline text alignments
-    * @class BaseAlign
-    */
-    (function (BaseAlign) {
-        /**
-        * The text baseline is the top of the em square.
-        * @property Top
-        * @static
-        */
-        BaseAlign[BaseAlign["Top"] = 0] = "Top";
-
-        /**
-        * The text baseline is the hanging baseline.  Currently unsupported; this will act like alphabetic.
-        * @property Hanging
-        * @static
-        */
-        BaseAlign[BaseAlign["Hanging"] = 1] = "Hanging";
-
-        /**
-        * The text baseline is the middle of the em square.
-        * @property Middle
-        * @static
-        */
-        BaseAlign[BaseAlign["Middle"] = 2] = "Middle";
-
-        /**
-        * The text baseline is the normal alphabetic baseline.
-        * @property Alphabetic
-        * @static
-        */
-        BaseAlign[BaseAlign["Alphabetic"] = 3] = "Alphabetic";
-
-        /**
-        * The text baseline is the ideographic baseline; this is the bottom of
-        * the body of the characters, if the main body of characters protrudes
-        * beneath the alphabetic baseline.  Currently unsupported; this will
-        * act like alphabetic.
-        * @property Ideographic
-        * @static
-        */
-        BaseAlign[BaseAlign["Ideographic"] = 4] = "Ideographic";
-
-        /**
-        * The text baseline is the bottom of the bounding box.  This differs
-        * from the ideographic baseline in that the ideographic baseline
-        * doesn't consider descenders.
-        * @property Bottom
-        * @static
-        */
-        BaseAlign[BaseAlign["Bottom"] = 5] = "Bottom";
-    })(ex.BaseAlign || (ex.BaseAlign = {}));
-    var BaseAlign = ex.BaseAlign;
-
-    /**
-    * Labels are the way to draw small amounts of text to the screen in Excalibur. They are
-    * actors and inherit all of the benifits and capabilities.
-    * @class Label
-    * @extends Actor
-    * @constructor
-    * @param [text=empty] {string} The text of the label
-    * @param [x=0] {number} The x position of the label
-    * @param [y=0] {number} The y position of the label
-    * @param [font=sans-serif] {string} Use any valid css font string for the label's font. Default is "10px sans-serif".
-    * @param [spriteFont=undefined] {SpriteFont} Use an Excalibur sprite font for the label's font, if a SpriteFont is provided it will take precendence over a css font.
-    *
-    */
-    var Label = (function (_super) {
-        __extends(Label, _super);
-        function Label(text, x, y, font, spriteFont) {
-            _super.call(this, x, y);
-            /**
-            * Gets or sets the letter spacing on a Label. Only supported with Sprite Fonts.
-            * @property [letterSpacing=0] {number}
-            */
-            this.letterSpacing = 0;
-            this.caseInsensitive = true;
-            this._textShadowOn = false;
-            this._shadowOffsetX = 0;
-            this._shadowOffsetY = 0;
-            this._shadowColor = ex.Color.Black.clone();
-            this._shadowColorDirty = false;
-            this._textSprites = {};
-            this._shadowSprites = {};
-            this._color = ex.Color.Black.clone();
-            this.text = text || "";
-            this.color = ex.Color.Black.clone();
-            this.spriteFont = spriteFont;
-            this.collisionType = 0 /* PreventCollision */;
-            this.font = font || "10px sans-serif"; // coallesce to default canvas font
-            if (spriteFont) {
-                this._textSprites = spriteFont.getTextSprites();
-            }
-        }
-        /**
-        * Returns the width of the text in the label (in pixels);
-        * @method getTextWidth {number}
-        * @param ctx {CanvasRenderingContext2D} Rending context to measure the string with
-        */
-        Label.prototype.getTextWidth = function (ctx) {
-            var oldFont = ctx.font;
-            ctx.font = this.font;
-            var width = ctx.measureText(this.text).width;
-            ctx.font = oldFont;
-            return width;
-        };
-
-        // TypeScript doesn't support string enums :(
-        Label.prototype._lookupTextAlign = function (textAlign) {
-            switch (textAlign) {
-                case 0 /* Left */:
-                    return "left";
-                    break;
-                case 1 /* Right */:
-                    return "right";
-                    break;
-                case 2 /* Center */:
-                    return "center";
-                    break;
-                case 4 /* End */:
-                    return "end";
-                    break;
-                case 3 /* Start */:
-                    return "start";
-                    break;
-                default:
-                    return "start";
-                    break;
-            }
-        };
-
-        Label.prototype._lookupBaseAlign = function (baseAlign) {
-            switch (baseAlign) {
-                case 3 /* Alphabetic */:
-                    return "alphabetic";
-                    break;
-                case 5 /* Bottom */:
-                    return "bottom";
-                    break;
-                case 1 /* Hanging */:
-                    return "hangin";
-                    break;
-                case 4 /* Ideographic */:
-                    return "ideographic";
-                    break;
-                case 2 /* Middle */:
-                    return "middle";
-                    break;
-                case 0 /* Top */:
-                    return "top";
-                    break;
-                default:
-                    return "alphabetic";
-                    break;
-            }
-        };
-
-        /**
-        * Sets the text shadow for sprite fonts
-        * @method setTextShadow
-        * @param offsetX {number} The x offset in pixels to place the shadow
-        * @param offsetY {number} The y offset in pixles to place the shadow
-        * @param shadowColor {Color} The color of the text shadow
-        */
-        Label.prototype.setTextShadow = function (offsetX, offsetY, shadowColor) {
-            this._textShadowOn = true;
-            this._shadowOffsetX = offsetX;
-            this._shadowOffsetY = offsetY;
-            this._shadowColor = shadowColor.clone();
-            this._shadowColorDirty = true;
-            for (var character in this._textSprites) {
-                this._shadowSprites[character] = this._textSprites[character].clone();
-            }
-        };
-
-        /**
-        * Clears the current text shadow
-        * @method clearTextShadow
-        */
-        Label.prototype.clearTextShadow = function () {
-            this._textShadowOn = false;
-            this._shadowOffsetX = 0;
-            this._shadowOffsetY = 0;
-            this._shadowColor = ex.Color.Black.clone();
-        };
-
-        Label.prototype.update = function (engine, delta) {
-            _super.prototype.update.call(this, engine, delta);
-
-            if (this.spriteFont && this._color !== this.color) {
-                for (var character in this._textSprites) {
-                    this._textSprites[character].clearEffects();
-                    this._textSprites[character].addEffect(new ex.Effects.Fill(this.color.clone()));
-                    this._color = this.color;
-                }
-            }
-
-            if (this.spriteFont && this._textShadowOn && this._shadowColorDirty && this._shadowColor) {
-                for (var character in this._shadowSprites) {
-                    this._shadowSprites[character].clearEffects();
-                    this._shadowSprites[character].addEffect(new ex.Effects.Fill(this._shadowColor.clone()));
-                }
-                this._shadowColorDirty = false;
-            }
-        };
-
-        Label.prototype.draw = function (ctx, delta) {
-            ctx.save();
-            ctx.translate(this.x, this.y);
-            ctx.scale(this.scaleX, this.scaleY);
-            ctx.rotate(this.rotation);
-
-            if (this._textShadowOn) {
-                ctx.save();
-                ctx.translate(this._shadowOffsetX, this._shadowOffsetY);
-                this._fontDraw(ctx, delta, this._shadowSprites);
-                ctx.restore();
-            }
-            this._fontDraw(ctx, delta, this._textSprites);
-
-            _super.prototype.draw.call(this, ctx, delta);
-            ctx.restore();
-        };
-
-        Label.prototype._fontDraw = function (ctx, delta, sprites) {
-            if (!this.invisible) {
-                if (this.spriteFont) {
-                    var currX = 0;
-
-                    for (var i = 0; i < this.text.length; i++) {
-                        var character = this.text[i];
-                        if (this.caseInsensitive) {
-                            character = character.toLowerCase();
-                        }
-                        try  {
-                            var charSprite = sprites[character];
-                            if (this.previousOpacity !== this.opacity) {
-                                charSprite.clearEffects();
-                                charSprite.addEffect(new ex.Effects.Opacity(this.opacity));
-                            }
-                            charSprite.draw(ctx, currX, 0);
-                            currX += (charSprite.swidth + this.letterSpacing);
-                        } catch (e) {
-                            ex.Logger.getInstance().error("SpriteFont Error drawing char " + character);
-                        }
-                    }
-                    if (this.previousOpacity !== this.opacity) {
-                        this.previousOpacity = this.opacity;
-                    }
-                    //this.spriteFont.draw(ctx, 0, 0, this.text, color, this.letterSpacing);
-                } else {
-                    var oldAlign = ctx.textAlign;
-                    var oldTextBaseline = ctx.textBaseline;
-
-                    ctx.textAlign = this._lookupTextAlign(this.textAlign);
-                    ctx.textBaseline = this._lookupBaseAlign(this.baseAlign);
-                    if (this.color) {
-                        this.color.a = this.opacity;
-                    }
-                    ctx.fillStyle = this.color.toString();
-                    ctx.font = this.font;
-                    if (this.maxWidth) {
-                        ctx.fillText(this.text, 0, 0, this.maxWidth);
-                    } else {
-                        ctx.fillText(this.text, 0, 0);
-                    }
-
-                    ctx.textAlign = oldAlign;
-                    ctx.textBaseline = oldTextBaseline;
-                }
-            }
-        };
-
-        Label.prototype.debugDraw = function (ctx) {
-            _super.prototype.debugDraw.call(this, ctx);
-        };
-        return Label;
-    })(Actor);
-    ex.Label = Label;
-
-    /**
-    * Triggers a method of firing arbitrary code on collision. These are useful
-    * as 'buttons', 'switches', or to trigger effects in a game. By defualt triggers
-    * are invisible, and can only be seen with debug mode enabled on the Engine.
-    * @class Trigger
-    * @constructor
-    * @param [x=0] {number} The x position of the trigger
-    * @param [y=0] {number} The y position of the trigger
-    * @param [width=0] {number} The width of the trigger
-    * @param [height=0] {number} The height of the trigger
-    * @param [action=null] {()=>void} Callback to fire when trigger is activated
-    * @param [repeats=1] {number} The number of times that this trigger should fire, by default it is 1, if -1 is supplied it will fire indefinitely
-    */
-    var Trigger = (function (_super) {
-        __extends(Trigger, _super);
-        function Trigger(x, y, width, height, action, repeats) {
-            _super.call(this, x, y, width, height);
-            this.action = function () {
-            };
-            this.repeats = 1;
-            this.target = null;
-            this.repeats = repeats || this.repeats;
-            this.action = action || this.action;
-            this.collisionType = 0 /* PreventCollision */;
-            this.eventDispatcher = new ex.EventDispatcher(this);
-            this.actionQueue = new ex.Internal.Actions.ActionQueue(this);
-        }
-        Trigger.prototype.update = function (engine, delta) {
-            var eventDispatcher = this.eventDispatcher;
-
-            // Update event dispatcher
-            eventDispatcher.update();
-
-            // Update action queue
-            this.actionQueue.update(delta);
-
-            // Update placements based on linear algebra
-            this.x += this.dx * delta / 1000;
-            this.y += this.dy * delta / 1000;
-
-            this.rotation += this.rx * delta / 1000;
-
-            this.scaleX += this.sx * delta / 1000;
-            this.scaleY += this.sy * delta / 1000;
-
-            // check for trigger collisions
-            if (this.target) {
-                if (this.collides(this.target)) {
-                    this.dispatchAction();
-                }
-            } else {
-                for (var i = 0; i < engine.currentScene.children.length; i++) {
-                    var other = engine.currentScene.children[i];
-                    if (other !== this && other.collisionType !== 0 /* PreventCollision */ && this.collides(other)) {
-                        this.dispatchAction();
-                    }
-                }
-            }
-
-            // remove trigger if its done, -1 repeat forever
-            if (this.repeats === 0) {
-                this.kill();
-            }
-        };
-
-        Trigger.prototype.dispatchAction = function () {
-            this.action.call(this);
-            this.repeats--;
-        };
-
-        Trigger.prototype.draw = function (ctx, delta) {
-            // does not draw
-            return;
-        };
-
-        Trigger.prototype.debugDraw = function (ctx) {
-            _super.prototype.debugDraw.call(this, ctx);
-
-            // Meant to draw debug information about actors
-            ctx.save();
-            ctx.translate(this.x, this.y);
-
-            // Currently collision primitives cannot rotate
-            // ctx.rotate(this.rotation);
-            ctx.fillStyle = ex.Color.Violet.toString();
-            ctx.strokeStyle = ex.Color.Violet.toString();
-            ctx.fillText('Trigger', 10, 10);
-            ctx.beginPath();
-            ctx.rect(0, 0, this.getWidth(), this.getHeight());
-            ctx.stroke();
-
-            ctx.restore();
-        };
-        return Trigger;
-    })(Actor);
-    ex.Trigger = Trigger;
 })(ex || (ex = {}));
 /// <reference path="Core.ts" />
 /// <reference path="Entities.ts" />
@@ -3588,6 +1288,3467 @@ var ex;
         return EventDispatcher;
     })();
     ex.EventDispatcher = EventDispatcher;
+})(ex || (ex = {}));
+/// <reference path="Algebra.ts"/>
+/// <reference path="Events.ts"/>
+var ex;
+(function (ex) {
+    (function (Util) {
+        /**
+        * Excalibur base class
+        * @class Class
+        * @constructor
+        */
+        var Class = (function () {
+            function Class() {
+                this.eventDispatcher = new ex.EventDispatcher(this);
+            }
+            /**
+            * Add an event listener. You can listen for a variety of
+            * events off of the engine; see the events section below for a complete list.
+            * @method addEventListener
+            * @param eventName {string} Name of the event to listen for
+            * @param handler {event=>void} Event handler for the thrown event
+            */
+            Class.prototype.addEventListener = function (eventName, handler) {
+                this.eventDispatcher.subscribe(eventName, handler);
+            };
+
+            /**
+            * Removes an event listener. If only the eventName is specified
+            * it will remove all handlers registered for that specific event. If the eventName
+            * and the handler instance are specified just that handler will be removed.
+            *
+            * @method removeEventListener
+            * @param eventName {string} Name of the event to listen for
+            * @param [handler=undefined] {event=>void} Event handler for the thrown event
+            */
+            Class.prototype.removeEventListener = function (eventName, handler) {
+                this.eventDispatcher.unsubscribe(eventName, handler);
+            };
+
+            /**
+            * Alias for "addEventListener". You can listen for a variety of
+            * events off of the engine; see the events section below for a complete list.
+            * @method on
+            * @param eventName {string} Name of the event to listen for
+            * @param handler {event=>void} Event handler for the thrown event
+            */
+            Class.prototype.on = function (eventName, handler) {
+                this.eventDispatcher.subscribe(eventName, handler);
+            };
+
+            /**
+            * Alias for "removeEventListener". If only the eventName is specified
+            * it will remove all handlers registered for that specific event. If the eventName
+            * and the handler instance are specified only that handler will be removed.
+            *
+            * @method off
+            * @param eventName {string} Name of the event to listen for
+            * @param [handler=undefined] {event=>void} Event handler for the thrown event
+            */
+            Class.prototype.off = function (eventName, handler) {
+                this.eventDispatcher.unsubscribe(eventName, handler);
+            };
+
+            /**
+            * You may wish to extend native Excalibur functionality. Any method on
+            * actor may be extended to support additional functionaliy. In the
+            * example below we create a new type called "MyActor"
+            * <br/><b>Example</b><pre>var MyActor = Actor.extend({
+            constructor : function(){
+            this.newprop = 'something';
+            Actor.apply(this, arguments);
+            },
+            update : function(engine, delta){
+            // Implement custom update
+            
+            // Call super constructor update
+            Actor.prototype.update.call(this, engine, delta);
+            console.log("Something cool!");
+            }
+            });
+            var myActor = new MyActor(100, 100, 100, 100, Color.Azure);</pre>
+            * @method extend
+            * @static
+            * @param methods {any}
+            */
+            Class.extend = function (methods) {
+                var parent = this;
+                var child;
+
+                if (methods && methods.hasOwnProperty('constructor')) {
+                    child = methods.constructor;
+                } else {
+                    child = function () {
+                        return parent.apply(this, arguments);
+                    };
+                }
+
+                // Using constructor allows JS to lazily instantiate super classes
+                var Super = function () {
+                    this.constructor = child;
+                };
+                Super.prototype = parent.prototype;
+                child.prototype = new Super;
+
+                if (methods) {
+                    for (var prop in methods) {
+                        if (methods.hasOwnProperty(prop)) {
+                            child.prototype[prop] = methods[prop];
+                        }
+                    }
+                }
+
+                // Make subclasses extendable
+                child.extend = Class.extend;
+
+                return child;
+            };
+            return Class;
+        })();
+        Util.Class = Class;
+
+        function base64Encode(inputStr) {
+            var b64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+            var outputStr = "";
+            var i = 0;
+
+            while (i < inputStr.length) {
+                //all three "& 0xff" added below are there to fix a known bug
+                //with bytes returned by xhr.responseText
+                var byte1 = inputStr.charCodeAt(i++) & 0xff;
+                var byte2 = inputStr.charCodeAt(i++) & 0xff;
+                var byte3 = inputStr.charCodeAt(i++) & 0xff;
+
+                var enc1 = byte1 >> 2;
+                var enc2 = ((byte1 & 3) << 4) | (byte2 >> 4);
+
+                var enc3, enc4;
+                if (isNaN(byte2)) {
+                    enc3 = enc4 = 64;
+                } else {
+                    enc3 = ((byte2 & 15) << 2) | (byte3 >> 6);
+                    if (isNaN(byte3)) {
+                        enc4 = 64;
+                    } else {
+                        enc4 = byte3 & 63;
+                    }
+                }
+
+                outputStr += b64.charAt(enc1) + b64.charAt(enc2) + b64.charAt(enc3) + b64.charAt(enc4);
+            }
+
+            return outputStr;
+        }
+        Util.base64Encode = base64Encode;
+
+        function clamp(val, min, max) {
+            return val <= min ? min : (val >= max ? max : val);
+        }
+        Util.clamp = clamp;
+
+        function drawLine(ctx, color, startx, starty, endx, endy) {
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.moveTo(startx, starty);
+            ctx.lineTo(endx, endy);
+            ctx.closePath();
+            ctx.stroke();
+        }
+        Util.drawLine = drawLine;
+
+        function randomInRange(min, max) {
+            return min + Math.random() * (max - min);
+        }
+        Util.randomInRange = randomInRange;
+
+        function getPosition(el) {
+            var oLeft = 0, oTop = 0;
+
+            var calcOffsetLeft = function (parent) {
+                oLeft += parent.offsetLeft;
+
+                if (parent.offsetParent) {
+                    calcOffsetLeft(parent.offsetParent);
+                }
+            };
+            var calcOffsetTop = function (parent) {
+                oTop += parent.offsetTop;
+                if (parent.offsetParent) {
+                    calcOffsetTop(parent.offsetParent);
+                }
+            };
+
+            calcOffsetLeft(el);
+            calcOffsetTop(el);
+
+            return new ex.Point(oLeft, oTop);
+        }
+        Util.getPosition = getPosition;
+
+        function getOppositeSide(side) {
+            if (side === 1 /* Top */)
+                return 2 /* Bottom */;
+            if (side === 2 /* Bottom */)
+                return 1 /* Top */;
+            if (side === 3 /* Left */)
+                return 4 /* Right */;
+            if (side === 4 /* Right */)
+                return 3 /* Left */;
+
+            return 0 /* None */;
+        }
+        Util.getOppositeSide = getOppositeSide;
+
+        /**
+        * Excaliburs dynamically resizing collection
+        * @class Collection
+        * @constructor
+        * @param [initialSize=200] {number} Initial size of the internal backing array
+        */
+        var Collection = (function () {
+            function Collection(initialSize) {
+                this.internalArray = null;
+                this.endPointer = 0;
+                var size = initialSize || Collection.DefaultSize;
+                this.internalArray = new Array(size);
+            }
+            Collection.prototype.resize = function () {
+                var newSize = this.internalArray.length * 2;
+                var newArray = new Array(newSize);
+                var count = this.count();
+                for (var i = 0; i < count; i++) {
+                    newArray[i] = this.internalArray[i];
+                }
+
+                delete this.internalArray;
+                this.internalArray = newArray;
+            };
+
+            /**
+            * Push elements to the end of the collection
+            * @method push
+            * @param element {T}
+            * @returns T
+            */
+            Collection.prototype.push = function (element) {
+                if (this.endPointer === this.internalArray.length) {
+                    this.resize();
+                }
+                return this.internalArray[this.endPointer++] = element;
+            };
+
+            /**
+            * Removes elements from the end of the collection
+            * @method pop
+            * @returns T
+            */
+            Collection.prototype.pop = function () {
+                this.endPointer = this.endPointer - 1 < 0 ? 0 : this.endPointer - 1;
+                return this.internalArray[this.endPointer];
+            };
+
+            /**
+            * Returns the count of the collection
+            * @method count
+            * @returns number
+            */
+            Collection.prototype.count = function () {
+                return this.endPointer;
+            };
+
+            /**
+            * Empties the collection
+            * @method clear
+            */
+            Collection.prototype.clear = function () {
+                this.endPointer = 0;
+            };
+
+            /**
+            * Returns the size of the internal backing array
+            * @method internalSize
+            * @returns number
+            */
+            Collection.prototype.internalSize = function () {
+                return this.internalArray.length;
+            };
+
+            /**
+            * Returns an element at a specific index
+            * @method elementAt
+            * @param index {number} Index of element to retreive
+            * @returns T
+            */
+            Collection.prototype.elementAt = function (index) {
+                if (index >= this.count()) {
+                    return;
+                }
+                return this.internalArray[index];
+            };
+
+            /**
+            * Inserts an element at a specific index
+            * @method insert
+            * @param index {number} Index to insert the element
+            * @returns T
+            */
+            Collection.prototype.insert = function (index, value) {
+                if (index >= this.count()) {
+                    this.resize();
+                }
+                return this.internalArray[index] = value;
+            };
+
+            /**
+            * Removes an element at a specific index
+            * @method remove
+            * @param index {number} Index of element to remove
+            * @returns T
+            */
+            Collection.prototype.remove = function (index) {
+                var count = this.count();
+                if (count === 0)
+                    return;
+
+                // O(n) Shift
+                var removed = this.internalArray[index];
+                for (var i = index; i < count; i++) {
+                    this.internalArray[i] = this.internalArray[i + 1];
+                }
+                this.endPointer--;
+                return removed;
+            };
+
+            /**
+            * Removes an element by reference
+            * @method removeElement
+            * @param element {T} Index of element to retreive
+            */
+            Collection.prototype.removeElement = function (element) {
+                var index = this.internalArray.indexOf(element);
+                this.remove(index);
+            };
+
+            /**
+            * Returns a array representing the collection
+            * @method toArray
+            * @returns T[]
+            */
+            Collection.prototype.toArray = function () {
+                return this.internalArray.slice(0, this.endPointer);
+            };
+
+            /**
+            * Iterate over every element in the collection
+            * @method forEach
+            * @param func {(T,number)=>any} Callback to call for each element passing a reference to the element and its index, returned values are ignored
+            */
+            Collection.prototype.forEach = function (func) {
+                var count = this.count();
+                for (var i = 0; i < count; i++) {
+                    func.call(this, this.internalArray[i], i);
+                }
+            };
+
+            /**
+            * Mutate every element in the collection
+            * @method map
+            * @param func {(T,number)=>any} Callback to call for each element passing a reference to the element and its index, any values returned mutate the collection
+            */
+            Collection.prototype.map = function (func) {
+                var count = this.count();
+                for (var i = 0; i < count; i++) {
+                    this.internalArray[i] = func.call(this, this.internalArray[i], i);
+                }
+            };
+            Collection.DefaultSize = 200;
+            return Collection;
+        })();
+        Util.Collection = Collection;
+    })(ex.Util || (ex.Util = {}));
+    var Util = ex.Util;
+})(ex || (ex = {}));
+/// <reference path="Core.ts" />
+var ex;
+(function (ex) {
+    /**
+    * A light-weight object that occupies a space in a collision map. Generally
+    * created by a CollisionMap.
+    * @class Cell
+    * @constructor
+    * @param x {number}
+    * @param y {number}
+    * @param width {number}
+    * @param height {number}
+    * @param index {number}
+    * @param [solid=false] {boolean}
+    * @param [spriteId=-1] {number}
+    */
+    var Cell = (function () {
+        function Cell(/**
+        * Gets or sets x coordinate of the cell in world coordinates
+        * @property x {number}
+        */
+        x, /**
+        * Gets or sets y coordinate of the cell in world coordinates
+        * @property y {number}
+        */
+        y, /**
+        * Gets or sets the width of the cell
+        * @property width {number}
+        */
+        width, /**
+        * Gets or sets the height of the cell
+        * @property height {number}
+        */
+        height, /**
+        * The index of the cell in row major order
+        * @property index {number}
+        */
+        index, /**
+        * Gets or sets whether this cell is solid
+        * @property solid {boolean}
+        */
+        solid, /**
+        * The index of the sprite to use from the CollisionMap SpriteSheet, if -1 is specified nothing is drawn.
+        * @property number {number}
+        */
+        spriteId) {
+            if (typeof solid === "undefined") { solid = false; }
+            if (typeof spriteId === "undefined") { spriteId = -1; }
+            this.x = x;
+            this.y = y;
+            this.width = width;
+            this.height = height;
+            this.index = index;
+            this.solid = solid;
+            this.spriteId = spriteId;
+            this._bounds = new ex.BoundingBox(this.x, this.y, this.x + this.width, this.y + this.height);
+        }
+        /**
+        * Returns the bounding box for this cell
+        * @method getBounds
+        * @returns BoundingBox
+        */
+        Cell.prototype.getBounds = function () {
+            return this._bounds;
+        };
+        return Cell;
+    })();
+    ex.Cell = Cell;
+
+    /**
+    * The CollisionMap object provides a lightweight way to do large complex scenes with collision
+    * without the overhead of actors.
+    * @class CollisionMap
+    * @constructor
+    * @param x {number} The x coordinate to anchor the collision map's upper left corner (should not be changed once set)
+    * @param y {number} The y coordinate to anchor the collision map's upper left corner (should not be changed once set)
+    * @param cellWidth {number} The individual width of each cell (in pixels) (should not be changed once set)
+    * @param cellHeight {number} The individual height of each cell (in pixels) (should not be changed once set)
+    * @param rows {number} The number of rows in the collision map (should not be changed once set)
+    * @param cols {number} The number of cols in the collision map (should not be changed once set)
+    * @param spriteSheet {SpriteSheet} The spriteSheet to use for drawing
+    */
+    var CollisionMap = (function () {
+        function CollisionMap(x, y, cellWidth, cellHeight, rows, cols, spriteSheet) {
+            var _this = this;
+            this.x = x;
+            this.y = y;
+            this.cellWidth = cellWidth;
+            this.cellHeight = cellHeight;
+            this.rows = rows;
+            this.cols = cols;
+            this.spriteSheet = spriteSheet;
+            this._collidingX = -1;
+            this._collidingY = -1;
+            this._onScreenXStart = 0;
+            this._onScreenXEnd = 9999;
+            this._onScreenYStart = 0;
+            this._onScreenYEnd = 9999;
+            this.data = [];
+            this.data = new Array(rows * cols);
+            for (var i = 0; i < cols; i++) {
+                for (var j = 0; j < rows; j++) {
+                    (function () {
+                        var cd = new Cell(i * cellWidth + x, j * cellHeight + y, cellWidth, cellHeight, i + j * cols);
+                        _this.data[i + j * cols] = cd;
+                    })();
+                }
+            }
+        }
+        /**
+        * Returns the intesection vector that can be used to resolve collisions with actors. If there
+        * is no collision null is returned.
+        * @method collides
+        * @param actor {Actor}
+        * @returns Vector
+        */
+        CollisionMap.prototype.collides = function (actor) {
+            var points = [];
+            var width = actor.x + actor.getWidth();
+            var height = actor.y + actor.getHeight();
+            var actorBounds = actor.getBounds();
+
+            var overlaps = [];
+
+            for (var x = actor.x; x <= width; x += Math.min(actor.getWidth() / 2, this.cellWidth / 2)) {
+                for (var y = actor.y; y <= height; y += Math.min(actor.getHeight() / 2, this.cellHeight / 2)) {
+                    var cell = this.getCellByPoint(x, y);
+                    var xover = 0;
+                    var yover = 0;
+                    if (cell && cell.solid) {
+                        var overlap = actorBounds.collides(cell.getBounds());
+                        if (overlap) {
+                            overlaps.push(overlap);
+                        }
+                    }
+                }
+            }
+
+            if (overlaps.length === 0) {
+                return null;
+            }
+
+            // Return the smallest change other than zero
+            var result = overlaps.reduce(function (accum, next) {
+                var x = accum.x;
+                var y = accum.y;
+
+                if (Math.abs(accum.x) < Math.abs(next.x)) {
+                    x = next.x;
+                }
+
+                if (Math.abs(accum.y) < Math.abs(next.y)) {
+                    y = next.y;
+                }
+                return new ex.Vector(x, y);
+            });
+
+            return result;
+        };
+
+        /*
+        public collidesActor(actor: Actor): boolean{
+        
+        var points: Point[] = [];
+        var width = actor.x + actor.getWidth();
+        var height = actor.y + actor.getHeight();
+        for(var x = actor.x; x <= width; x += Math.min(actor.getWidth()/2,this.cellWidth/2)){
+        for(var y = actor.y; y <= height; y += Math.min(actor.getHeight()/2, this.cellHeight/2)){
+        points.push(new Point(x,y))
+        }
+        }
+        
+        var result = points.some((p) => {
+        return this.collidesPoint(p.x, p.y);
+        });
+        
+        return result;
+        
+        }*/
+        /*
+        public collidesPoint(x: number, y: number): boolean{
+        var x = Math.floor(x/this.cellWidth);// - Math.floor(this.x/this.cellWidth);
+        var y = Math.floor(y/this.cellHeight);
+        
+        
+        var cell = this.getCell(x, y);
+        if(x >= 0 && y >= 0 && x < this.cols && y < this.rows && cell){
+        if(cell.solid){
+        this._collidingX = x;
+        this._collidingY = y;
+        }
+        return cell.solid;
+        }
+        
+        
+        
+        
+        return false;
+        }*/
+        /**
+        * Returns the cell by index (row major order)
+        * @method getCellByIndex
+        * @param index {number}
+        * @returns Cell
+        */
+        CollisionMap.prototype.getCellByIndex = function (index) {
+            return this.data[index];
+        };
+
+        /**
+        * Returns the cell by it's x and y coordinates
+        * @method getCell
+        * @param x {number}
+        * @param y {number}
+        * @returns Cell
+        */
+        CollisionMap.prototype.getCell = function (x, y) {
+            if (x < 0 || y < 0 || x >= this.cols || y >= this.rows) {
+                return null;
+            }
+
+            return this.data[x + y * this.cols];
+        };
+
+        /**
+        * Returns the cell by testing a point in global coordinates,
+        * returns null if no cell was found.
+        * @method getCellByPoint
+        * @param x {number}
+        * @param y {number}
+        * @returns Cell
+        */
+        CollisionMap.prototype.getCellByPoint = function (x, y) {
+            var x = Math.floor((x - this.x) / this.cellWidth);
+            var y = Math.floor((y - this.y) / this.cellHeight);
+
+            var cell = this.getCell(x, y);
+            if (x >= 0 && y >= 0 && x < this.cols && y < this.rows && cell) {
+                return cell;
+            }
+
+            return null;
+        };
+
+        CollisionMap.prototype.update = function (engine, delta) {
+            var worldCoordsUpperLeft = engine.screenToWorldCoordinates(new ex.Point(0, 0));
+            var worldCoordsLowerRight = engine.screenToWorldCoordinates(new ex.Point(engine.width, engine.height));
+
+            this._onScreenXStart = Math.max(Math.floor(worldCoordsUpperLeft.x / this.cellWidth) - 2, 0);
+            this._onScreenYStart = Math.max(Math.floor((worldCoordsUpperLeft.y - this.y) / this.cellHeight), 0);
+            this._onScreenXEnd = Math.max(Math.floor(worldCoordsLowerRight.x / this.cellWidth), 0);
+            this._onScreenYEnd = Math.max(Math.floor((worldCoordsLowerRight.y - this.y) / this.cellHeight) + 1, 0);
+        };
+
+        /**
+        * Draws the collision map to the screen. Called by the Scene.
+        * @method draw
+        * @param ctx {CanvasRenderingContext2D} The current rendering context
+        * @param delta {number} The number of milliseconds since the last draw
+        */
+        CollisionMap.prototype.draw = function (ctx, delta) {
+            ctx.save();
+            ctx.translate(this.x, this.y);
+
+            for (var x = this._onScreenXStart; x < Math.min(this._onScreenXEnd, this.cols); x++) {
+                for (var y = this._onScreenYStart; y < Math.min(this._onScreenYEnd, this.rows); y++) {
+                    var spriteId = this.getCell(x, y).spriteId;
+                    if (spriteId > -1) {
+                        this.spriteSheet.getSprite(spriteId).draw(ctx, x * this.cellWidth, y * this.cellHeight);
+                    }
+                }
+            }
+            ctx.restore();
+        };
+
+        /**
+        * Draws all the collision map's debug info. Called by the Scene.
+        * @method draw
+        * @param ctx {CanvasRenderingContext2D} The current rendering context
+        */
+        CollisionMap.prototype.debugDraw = function (ctx) {
+            var width = this.cols * this.cellWidth;
+            var height = this.rows * this.cellHeight;
+
+            ctx.save();
+
+            ctx.strokeStyle = ex.Color.Red.toString();
+            for (var x = 0; x < this.cols + 1; x++) {
+                ctx.beginPath();
+                ctx.moveTo(this.x + x * this.cellWidth, this.y);
+                ctx.lineTo(this.x + x * this.cellWidth, this.y + height);
+                ctx.stroke();
+            }
+            for (var y = 0; y < this.rows + 1; y++) {
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y + y * this.cellHeight);
+                ctx.lineTo(this.x + width, this.y + y * this.cellHeight);
+                ctx.stroke();
+            }
+
+            if (this._collidingY > -1 && this._collidingX > -1) {
+                ctx.fillStyle = ex.Color.Cyan.toString();
+                ctx.fillRect(this.x + this._collidingX * this.cellWidth, this.y + this._collidingY * this.cellHeight, this.cellWidth, this.cellHeight);
+            }
+            ctx.restore();
+        };
+        return CollisionMap;
+    })();
+    ex.CollisionMap = CollisionMap;
+})(ex || (ex = {}));
+/// <reference path="Algebra.ts" />
+var ex;
+(function (ex) {
+    (function (CollisionStrategy) {
+        CollisionStrategy[CollisionStrategy["AxisAligned"] = 0] = "AxisAligned";
+        CollisionStrategy[CollisionStrategy["SeparatingAxis"] = 1] = "SeparatingAxis";
+    })(ex.CollisionStrategy || (ex.CollisionStrategy = {}));
+    var CollisionStrategy = ex.CollisionStrategy;
+
+    
+
+    /**
+    * Axis Aligned collision primitive for Excalibur.
+    * @class BoundingBox
+    * @constructor
+    * @param left {number} x coordinate of the left edge
+    * @param top {number} y coordinate of the top edge
+    * @param right {number} x coordinate of the right edge
+    * @param bottom {number} y coordinate of the bottom edge
+    */
+    var BoundingBox = (function () {
+        function BoundingBox(left, top, right, bottom) {
+            this.left = left;
+            this.top = top;
+            this.right = right;
+            this.bottom = bottom;
+        }
+        /**
+        * Returns the calculated width of the bounding box
+        * @method getWidth
+        * @returns number
+        */
+        BoundingBox.prototype.getWidth = function () {
+            return this.right - this.left;
+        };
+
+        /**
+        * Returns the calculated height of the bounding box
+        * @method getHeight
+        * @returns number
+        */
+        BoundingBox.prototype.getHeight = function () {
+            return this.bottom - this.top;
+        };
+
+        /**
+        * Tests wether a point is contained within the bounding box
+        * @method contains
+        * @param p {Point} The point to test
+        * @returns boolean
+        */
+        BoundingBox.prototype.contains = function (p) {
+            return (this.left < p.x && this.top < p.y && this.bottom > p.y && this.right > p.x);
+        };
+
+        /**
+        * Test wether this bounding box collides with another returning,
+        * the intersection vector that can be used to resovle the collision. If there
+        * is no collision null is returned.
+        * @method collides
+        * @param collidable {ICollidable} Other collidable to test
+        * @returns Vector
+        */
+        BoundingBox.prototype.collides = function (collidable) {
+            if (collidable instanceof BoundingBox) {
+                var other = collidable;
+                var totalBoundingBox = new BoundingBox(Math.min(this.left, other.left), Math.min(this.top, other.top), Math.max(this.right, other.right), Math.max(this.bottom, other.bottom));
+
+                // If the total bounding box is less than the sum of the 2 bounds then there is collision
+                if (totalBoundingBox.getWidth() < other.getWidth() + this.getWidth() && totalBoundingBox.getHeight() < other.getHeight() + this.getHeight()) {
+                    // collision
+                    var overlapX = 0;
+                    if (this.right >= other.left && this.right <= other.right) {
+                        overlapX = other.left - this.right;
+                    } else {
+                        overlapX = other.right - this.left;
+                    }
+
+                    var overlapY = 0;
+                    if (this.top <= other.bottom && this.top >= other.top) {
+                        overlapY = other.bottom - this.top;
+                    } else {
+                        overlapY = other.top - this.bottom;
+                    }
+                    return new ex.Vector(overlapX, overlapY);
+                } else {
+                    return null;
+                }
+            }
+
+            return null;
+        };
+
+        BoundingBox.prototype.debugDraw = function (ctx) {
+        };
+        return BoundingBox;
+    })();
+    ex.BoundingBox = BoundingBox;
+
+    var SATBoundingBox = (function () {
+        function SATBoundingBox(points) {
+            this._points = points.map(function (p) {
+                return p.toVector();
+            });
+        }
+        SATBoundingBox.prototype.getSides = function () {
+            var lines = [];
+            var len = this._points.length;
+            for (var i = 0; i < len; i++) {
+                lines.push(new ex.Line(this._points[i], this._points[(i + 1) % len]));
+            }
+            return lines;
+        };
+
+        SATBoundingBox.prototype.getAxes = function () {
+            var axes = [];
+            var len = this._points.length;
+            for (var i = 0; i < len; i++) {
+                axes.push(this._points[i].minus(this._points[(i + 1) % len]).normal());
+            }
+            return axes;
+        };
+
+        SATBoundingBox.prototype.project = function (axis) {
+            var scalars = [];
+
+            var len = this._points.length;
+            for (var i = 0; i < len; i++) {
+                scalars.push(this._points[i].dot(axis));
+            }
+
+            return new ex.Projection(Math.min.apply(Math, scalars), Math.max.apply(Math, scalars));
+        };
+
+        /**
+        * Returns the calculated width of the bounding box, by generating an axis aligned box around the current
+        * @method getWidth
+        * @returns number
+        */
+        SATBoundingBox.prototype.getWidth = function () {
+            var left = this._points.reduce(function (accum, p, i, arr) {
+                return Math.min(accum, p.x);
+            }, Infinity);
+
+            var right = this._points.reduce(function (accum, p, i, arr) {
+                return Math.max(accum, p.x);
+            }, -Infinity);
+
+            return right - left;
+        };
+
+        /**
+        * Returns the calculated height of the bounding box, by generating an axis aligned box around the current
+        * @method getHeight
+        * @returns number
+        */
+        SATBoundingBox.prototype.getHeight = function () {
+            var top = this._points.reduce(function (accum, p, i, arr) {
+                return Math.min(accum, p.y);
+            }, Infinity);
+
+            var bottom = this._points.reduce(function (accum, p, i, arr) {
+                return Math.max(accum, p.y);
+            }, -Infinity);
+
+            return top - bottom;
+        };
+
+        /**
+        * Tests wether a point is contained within the bounding box, using the PIP algorithm
+        * http://en.wikipedia.org/wiki/Point_in_polygon
+        * @method contains
+        * @param p {Point} The point to test
+        * @returns boolean
+        */
+        SATBoundingBox.prototype.contains = function (p) {
+            // Always cast to the right, as long as we cast in a consitent fixed direction we
+            // will be fine
+            var testRay = new ex.Ray(p, new ex.Vector(1, 0));
+            var intersectCount = this.getSides().reduce(function (accum, side, i, arr) {
+                if (testRay.intersect(side) >= 0) {
+                    return accum + 1;
+                }
+                return accum;
+            }, 0);
+
+            if (intersectCount % 2 === 0) {
+                return false;
+            }
+            return true;
+        };
+
+        SATBoundingBox.prototype.collides = function (collidable) {
+            if (collidable instanceof SATBoundingBox) {
+                var other = collidable;
+                var axes = this.getAxes();
+                axes = other.getAxes().concat(axes);
+                var minOverlap = 99999;
+                var minAxis = null;
+                for (var i = 0; i < axes.length; i++) {
+                    var proj1 = this.project(axes[i]);
+                    var proj2 = other.project(axes[i]);
+                    var overlap = proj1.getOverlap(proj2);
+
+                    if (overlap === 0) {
+                        return null;
+                    } else {
+                        if (overlap <= minOverlap) {
+                            minOverlap = overlap;
+                            minAxis = axes[i];
+                        }
+                    }
+                }
+
+                if (minAxis) {
+                    return minAxis.normalize().scale(minOverlap);
+                } else {
+                    return null;
+                }
+            }
+
+            return null;
+        };
+
+        SATBoundingBox.prototype.debugDraw = function (ctx) {
+            ctx.beginPath();
+            ctx.lineWidth = 2;
+
+            // Iterate through the supplied points and contruct a 'polygon'
+            var firstPoint = this._points[0];
+            ctx.moveTo(firstPoint.x, firstPoint.y);
+            this._points.forEach(function (point) {
+                ctx.lineTo(point.x, point.y);
+            });
+            ctx.lineTo(firstPoint.x, firstPoint.y);
+            ctx.closePath();
+
+            ctx.strokeStyle = ex.Color.Blue.toString();
+            ctx.stroke();
+        };
+        return SATBoundingBox;
+    })();
+    ex.SATBoundingBox = SATBoundingBox;
+})(ex || (ex = {}));
+/// <reference path="Core.ts" />
+/// <reference path="Algebra.ts" />
+/// <reference path="Util.ts" />
+/// <reference path="CollisionMap.ts" />
+/// <reference path="BoundingBox.ts" />
+var ex;
+(function (ex) {
+    var Overlap = (function () {
+        function Overlap(x, y) {
+            this.x = x;
+            this.y = y;
+        }
+        return Overlap;
+    })();
+    ex.Overlap = Overlap;
+
+    /**
+    * Actors are composed together into groupings called Scenes in
+    * Excalibur. The metaphor models the same idea behind real world
+    * actors in a scene. Only actors in scenes will be updated and drawn.
+    * @class Scene
+    * @constructor
+    */
+    var Scene = (function (_super) {
+        __extends(Scene, _super);
+        function Scene() {
+            _super.call(this);
+            /**
+            * The actors in the current scene
+            * @property children {Actor[]}
+            */
+            this.children = [];
+            this.collisionMaps = [];
+            this.killQueue = [];
+            this.timers = [];
+            this.cancelQueue = [];
+            this._isInitialized = false;
+        }
+        /**
+        * This is called when the scene is made active and started. It is meant to be overriden,
+        * this is where you should setup any DOM UI or event handlers needed for the scene.
+        * @method onActivate
+        */
+        Scene.prototype.onActivate = function () {
+            // will be overridden
+        };
+
+        /**
+        * This is called when the scene is made transitioned away from and stopped. It is meant to be overriden,
+        * this is where you should cleanup any DOM UI or event handlers needed for the scene.
+        * @method onDeactivate
+        */
+        Scene.prototype.onDeactivate = function () {
+            // will be overridden
+        };
+
+        /**
+        * This is called before the first update of the actor. This method is meant to be
+        * overridden. This is where initialization of child actors should take place.
+        * @method onInitialize
+        * @param engine {Engine}
+        */
+        Scene.prototype.onInitialize = function (engine) {
+            // will be overridden
+        };
+
+        /**
+        * Publish an event to all actors in the scene
+        * @method publish
+        * @param eventType {string} The name of the event to publish
+        * @param event {GameEvent} The event object to send
+        */
+        Scene.prototype.publish = function (eventType, event) {
+            this.children.forEach(function (actor) {
+                actor.triggerEvent(eventType, event);
+            });
+        };
+
+        /**
+        * Updates all the actors and timers in the Scene. Called by the Engine.
+        * @method update
+        * @param engine {Engine} Reference to the current Engine
+        * @param delta {number} The number of milliseconds since the last update
+        */
+        Scene.prototype.update = function (engine, delta) {
+            if (!this._isInitialized) {
+                this.onInitialize(engine);
+                this.eventDispatcher.publish('initialize', new ex.InitializeEvent(engine));
+                this._isInitialized = true;
+            }
+
+            this.collisionMaps.forEach(function (cm) {
+                cm.update(engine, delta);
+            });
+
+            // Update event dispatcher
+            this.eventDispatcher.update();
+
+            var len = 0;
+            var start = 0;
+            var end = 0;
+            var actor;
+
+            for (var i = 0, len = this.children.length; i < len; i++) {
+                this.children[i].update(engine, delta);
+            }
+
+            // Remove actors from scene graph after being killed
+            var actorIndex = 0;
+            for (var j = 0, len = this.killQueue.length; j < len; j++) {
+                actorIndex = this.children.indexOf(this.killQueue[j]);
+                if (actorIndex > -1) {
+                    this.children.splice(actorIndex, 1);
+                }
+            }
+            this.killQueue.length = 0;
+
+            // Remove timers in the cancel queue before updating them
+            var timerIndex = 0;
+            for (var k = 0, len = this.cancelQueue.length; k < len; k++) {
+                this.removeTimer(this.cancelQueue[k]);
+            }
+            this.cancelQueue.length = 0;
+
+            // Cycle through timers updating timers
+            var that = this;
+            this.timers = this.timers.filter(function (timer) {
+                timer.update(delta);
+                return !timer.complete;
+            });
+        };
+
+        /**
+        * Draws all the actors in the Scene. Called by the Engine.
+        * @method draw
+        * @param ctx {CanvasRenderingContext2D} The current rendering context
+        * @param delta {number} The number of milliseconds since the last draw
+        */
+        Scene.prototype.draw = function (ctx, delta) {
+            this.collisionMaps.forEach(function (cm) {
+                cm.draw(ctx, delta);
+            });
+
+            var len = 0;
+            var start = 0;
+            var end = 0;
+            var actor;
+            for (var i = 0, len = this.children.length; i < len; i++) {
+                actor = this.children[i];
+                this.children[i].draw(ctx, delta);
+            }
+        };
+
+        /**
+        * Draws all the actors' debug information in the Scene. Called by the Engine.
+        * @method draw
+        * @param ctx {CanvasRenderingContext2D} The current rendering context
+        */
+        Scene.prototype.debugDraw = function (ctx) {
+            this.collisionMaps.forEach(function (map) {
+                map.debugDraw(ctx);
+            });
+
+            this.children.forEach(function (actor) {
+                actor.debugDraw(ctx);
+            });
+        };
+
+        /**
+        * Adds an actor to the Scene, once this is done the actor will be drawn and updated.
+        * @method addChild
+        * @param actor {Actor} The actor to add
+        */
+        Scene.prototype.addChild = function (actor) {
+            actor.scene = this;
+            this.children.push(actor);
+            actor.parent = this.actor;
+        };
+
+        Scene.prototype.addCollisionMap = function (collisionMap) {
+            this.collisionMaps.push(collisionMap);
+        };
+
+        Scene.prototype.removeCollisionMap = function (collisionMap) {
+            var index = this.collisionMaps.indexOf(collisionMap);
+            if (index > -1) {
+                this.collisionMaps.splice(index, 1);
+            }
+        };
+
+        /**
+        * Removes an actor from the Scene, it will no longer be drawn or updated.
+        * @method removeChild
+        * @param actor {Actor} The actor to remove
+        */
+        Scene.prototype.removeChild = function (actor) {
+            this.killQueue.push(actor);
+            actor.parent = null;
+        };
+
+        /**
+        * Adds a timer to the Scene
+        * @method addTimer
+        * @param timer {Timer} The timer to add
+        * @returns Timer
+        */
+        Scene.prototype.addTimer = function (timer) {
+            this.timers.push(timer);
+            timer.scene = this;
+            return timer;
+        };
+
+        /**
+        * Removes a timer to the Scene, can be dangerous
+        * @method removeTimer
+        * @private
+        * @param timer {Timer} The timer to remove
+        * @returns Timer
+        */
+        Scene.prototype.removeTimer = function (timer) {
+            var i = this.timers.indexOf(timer);
+            if (i !== -1) {
+                this.timers.splice(i, 1);
+            }
+            return timer;
+        };
+
+        /**
+        * Cancels a timer, removing it from the scene nicely
+        * @method cancelTimer
+        * @param timer {Timer} The timer to cancel
+        * @returns Timer
+        */
+        Scene.prototype.cancelTimer = function (timer) {
+            this.cancelQueue.push(timer);
+            return timer;
+        };
+
+        /**
+        * Tests whether a timer is active in the scene
+        * @method isTimerActive
+        * @param timer {Timer}
+        * @returns boolean
+        */
+        Scene.prototype.isTimerActive = function (timer) {
+            return (this.timers.indexOf(timer) > -1);
+        };
+        return Scene;
+    })(ex.Util.Class);
+    ex.Scene = Scene;
+
+    /**
+    * An enum that describes the sides of an Actor for collision
+    * @class Side
+    */
+    (function (Side) {
+        /**
+        @property None {Side}
+        @static
+        @final
+        */
+        Side[Side["None"] = 0] = "None";
+
+        /**
+        @property Top {Side}
+        @static
+        @final
+        */
+        Side[Side["Top"] = 1] = "Top";
+
+        /**
+        @property Bottom {Side}
+        @static
+        @final
+        */
+        Side[Side["Bottom"] = 2] = "Bottom";
+
+        /**
+        @property Left {Side}
+        @static
+        @final
+        */
+        Side[Side["Left"] = 3] = "Left";
+
+        /**
+        @property Right {Side}
+        @static
+        @final
+        */
+        Side[Side["Right"] = 4] = "Right";
+    })(ex.Side || (ex.Side = {}));
+    var Side = ex.Side;
+
+    /**
+    * An enum that describes the types of collisions actors can participate in
+    * @class CollisionType
+    */
+    (function (CollisionType) {
+        /**
+        * Actors with the PreventCollision setting do not participate in any
+        * collisions and do not raise collision events.
+        * @property PreventCollision {CollisionType}
+        * @static
+        */
+        CollisionType[CollisionType["PreventCollision"] = 0] = "PreventCollision";
+
+        /**
+        * Actors with the Passive setting only raise collision events, but are not
+        * influenced or moved by other actors and do not influence or move other actors.
+        * @property Passive {CollisionType}
+        * @static
+        */
+        CollisionType[CollisionType["Passive"] = 1] = "Passive";
+
+        /**
+        * Actors with the Active setting raise collision events and participate
+        * in collisions with other actors and will be push or moved by actors sharing
+        * the Active or Fixed setting.
+        * @property Active {CollisionType}
+        * @static
+        */
+        CollisionType[CollisionType["Active"] = 2] = "Active";
+
+        /**
+        * Actors with the Elastic setting will behave the same as Active, except that they will
+        * "bounce" in the opposite direction given their velocity dx/dy. This is a naive implementation meant for
+        * prototyping, for a more robust elastic collision listen to the "collision" event and perform your custom logic.
+        * @property Elastic {CollisionType}
+        * @static
+        */
+        CollisionType[CollisionType["Elastic"] = 3] = "Elastic";
+
+        /**
+        * Actors with the Fixed setting raise collision events and participate in
+        * collisions with other actors. Actors with the Fixed setting will not be
+        * pushed or moved by other actors sharing the Fixed or Actors. Think of Fixed
+        * actors as "immovable/onstoppable" objects. If two Fixed actors meet they will
+        * not be pushed or moved by each other, they will not interact except to throw
+        * collision events.
+        * @property Fixed {CollisionType}
+        * @static
+        */
+        CollisionType[CollisionType["Fixed"] = 4] = "Fixed";
+    })(ex.CollisionType || (ex.CollisionType = {}));
+    var CollisionType = ex.CollisionType;
+
+    /**
+    * The most important primitive in Excalibur is an "Actor." Anything that
+    * can move on the screen, collide with another Actor, respond to events,
+    * or interact with the current scene, must be an actor. An Actor <b>must</b>
+    * be part of a {{#crossLink "Scene"}}{{/crossLink}} for it to be drawn to the screen.
+    * @class Actor
+    * @extends Class
+    * @constructor
+    * @param [x=0.0] {number} The starting x coordinate of the actor
+    * @param [y=0.0] {number} The starting y coordinate of the actor
+    * @param [width=0.0] {number} The starting width of the actor
+    * @param [height=0.0] {number} The starting height of the actor
+    * @param [color=undefined] {Color} The starting color of the actor
+    */
+    var Actor = (function (_super) {
+        __extends(Actor, _super);
+        function Actor(x, y, width, height, color) {
+            _super.call(this);
+            /**
+            * The x coordinate of the actor (left edge)
+            * @property x {number}
+            */
+            this.x = 0;
+            /**
+            * The y coordinate of the actor (top edge)
+            * @property y {number}
+            */
+            this.y = 0;
+            this.height = 0;
+            this.width = 0;
+            /**
+            * The rotation of the actor in radians
+            * @property rotation {number}
+            */
+            this.rotation = 0;
+            /**
+            * The rotational velocity of the actor in radians/second
+            * @property rx {number}
+            */
+            this.rx = 0;
+            /**
+            * The x scale of the actor
+            * @property scaleX {number}
+            */
+            this.scaleX = 1;
+            /**
+            * The y scale of the actor
+            * @property scaleY {number}
+            */
+            this.scaleY = 1;
+            /**
+            * The x scalar velocity of the actor in scale/second
+            * @property sx {number}
+            */
+            this.sx = 0;
+            /**
+            * The y scalar velocity of the actor in scale/second
+            * @property sy {number}
+            */
+            this.sy = 0;
+            /**
+            * The x velocity of the actor in pixels/second
+            * @property dx {number}
+            */
+            this.dx = 0;
+            /**
+            * The x velocity of the actor in pixels/second
+            * @property dx {number}
+            */
+            this.dy = 0;
+            /**
+            * The x acceleration of the actor in pixels/second^2
+            * @property ax {number}
+            */
+            this.ax = 0;
+            /**
+            * The y acceleration of the actor in pixels/second^2
+            * @property ay {number}
+            */
+            this.ay = 0;
+            /**
+            * Indicates wether the actor is physically in the viewport
+            * @property isOffScreen {boolean}
+            */
+            this.isOffScreen = false;
+            /**
+            * The visibility of an actor
+            * @property invisible {boolean}
+            */
+            this.invisible = false;
+            /**
+            * The opacity of an actor
+            * @property opacity {number}
+            */
+            this.opacity = 1;
+            this.previousOpacity = 1;
+            /**
+            * Convenience reference to the global logger
+            * @property logger {Logger}
+            */
+            this.logger = ex.Logger.getInstance();
+            /**
+            * The scene that the actor is in
+            * @property scene {Scene}
+            */
+            this.scene = null;
+            /**
+            * The parent of this actor
+            * @property parent {Actor}
+            */
+            this.parent = null;
+            /**
+            * Gets or sets the current collision type of this actor. By
+            * default all actors participate in Active collisions.
+            * @property collisionType {CollisionType}
+            */
+            this.collisionType = 2 /* Active */;
+            /**
+            * Gets or sets the current collision strategy used by this actor.
+            * By default all actors use the SeparatingAxis strategy.
+            * @property collisionStrategy: {CollisionStrategy}
+            */
+            this.collisionStrategy = 1 /* SeparatingAxis */;
+            this.collisionGroups = [];
+            this._collisionHandlers = {};
+            this._isInitialized = false;
+            this.frames = {};
+            /**
+            * Access to the current drawing on for the actor, this can be an {{#crossLink "Animation"}}{{/crossLink}},
+            * {{#crossLink "Sprite"}}{{/crossLink}}, or {{#crossLink "Polygon"}}{{/crossLink}}.
+            * Set drawings with the {{#crossLink "Actor/setDrawing:method"}}{{/crossLink}}.
+            * @property currentDrawing {IDrawable}
+            */
+            this.currentDrawing = null;
+            this.centerDrawingX = false;
+            this.centerDrawingY = false;
+            this._isKilled = false;
+            this.x = x || 0;
+            this.y = y || 0;
+            this.width = width || 0;
+            this.height = height || 0;
+            this.color = color;
+            this.actionQueue = new ex.Internal.Actions.ActionQueue(this);
+            this.sceneNode = new Scene();
+            this.sceneNode.actor = this;
+        }
+        /**
+        * This is called before the first update of the actor. This method is meant to be
+        * overridden. This is where initialization of child actors should take place.
+        * @method onInitialize
+        * @param engine {Engine}
+        */
+        Actor.prototype.onInitialize = function (engine) {
+            // will be overridden
+        };
+
+        /**
+        * If the current actors is a member of the scene. This will remove
+        * it from the scene graph. It will no longer be drawn or updated.
+        * @method kill
+        */
+        Actor.prototype.kill = function () {
+            if (this.scene) {
+                this.scene.removeChild(this);
+                this._isKilled = true;
+            } else {
+                this.logger.warn("Cannot kill actor, it was never added to the Scene");
+            }
+        };
+
+        /**
+        * Adds a child actor to this actor. All movement of the child actor will be
+        * relative to the parent actor. Meaning if the parent moves the child will
+        * move with
+        * @method addChild
+        * @param actor {Actor} The child actor to add
+        */
+        Actor.prototype.addChild = function (actor) {
+            actor.collisionType = 0 /* PreventCollision */;
+            this.sceneNode.addChild(actor);
+        };
+
+        /**
+        * Removes a child actor from this actor.
+        * @method removeChild
+        * @param actor {Actor} The child actor to remove
+        */
+        Actor.prototype.removeChild = function (actor) {
+            this.sceneNode.removeChild(actor);
+        };
+
+        /**
+        * Sets the current drawing of the actor to the drawing correspoding to
+        * the key.
+        * @method setDrawing
+        * @param key {string} The key of the drawing
+        */
+        Actor.prototype.setDrawing = function (key) {
+            if (this.currentDrawing != this.frames[key]) {
+                this.frames[key].reset();
+            }
+            this.currentDrawing = this.frames[key];
+        };
+
+        /**
+        * Adds a drawing to the list of available drawings for an actor.
+        * @method addDrawing
+        * @param key {string} The key to associate with a drawing for this actor
+        * @param drawing {IDrawable} this can be an {{#crossLink "Animation"}}{{/crossLink}},
+        * {{#crossLink "Sprite"}}{{/crossLink}}, or {{#crossLink "Polygon"}}{{/crossLink}}.
+        */
+        Actor.prototype.addDrawing = function (key, drawing) {
+            this.frames[key] = drawing;
+            if (!this.currentDrawing) {
+                this.currentDrawing = drawing;
+            }
+        };
+
+        /**
+        * Artificially trigger an event on an actor, useful when creating custom events.
+        * @method triggerEvent
+        * @param eventName {string} The name of the event to trigger
+        * @param [event=undefined] {GameEvent} The event object to pass to the callback
+        */
+        Actor.prototype.triggerEvent = function (eventName, event) {
+            this.eventDispatcher.publish(eventName, event);
+        };
+
+        /**
+        * Adds an actor to a collision group. Actors with no named collision group are
+        * considered to be in every collision group.
+        *
+        * Once in a collision group(s) actors will only collide with other actors in
+        * that group.
+        *
+        * @method addCollisionGroup
+        * @param name {string} The name of the collision group
+        */
+        Actor.prototype.addCollisionGroup = function (name) {
+            this.collisionGroups.push(name);
+        };
+
+        /**
+        * Remove an actor from a collision group.
+        * @method removeCollisionGroup
+        * @param name {string} The name of the collision group
+        */
+        Actor.prototype.removeCollisionGroup = function (name) {
+            var index = this.collisionGroups.indexOf(name);
+            if (index !== -1) {
+                this.collisionGroups.splice(index, 1);
+            }
+        };
+
+        /**
+        * Get the center point of an actor
+        * @method getCenter
+        * @returns Vector
+        */
+        Actor.prototype.getCenter = function () {
+            return new ex.Vector(this.x + this.getWidth() / 2, this.y + this.getHeight() / 2);
+        };
+
+        /**
+        * Gets the calculated width of an actor
+        * @method getWidth
+        * @returns number
+        */
+        Actor.prototype.getWidth = function () {
+            return this.width * this.scaleX;
+        };
+
+        /**
+        * Sets the width of an actor, factoring in the current scale
+        * @method setWidth
+        */
+        Actor.prototype.setWidth = function (width) {
+            this.width = width / this.scaleX;
+        };
+
+        /**
+        * Gets the calculated height of an actor
+        * @method getHeight
+        * @returns number
+        */
+        Actor.prototype.getHeight = function () {
+            return this.height * this.scaleY;
+        };
+
+        /**
+        * Sets the height of an actor, factoring in the current scale
+        * @method setHeight
+        */
+        Actor.prototype.setHeight = function (height) {
+            this.height = height / this.scaleY;
+        };
+
+        /**
+        * Centers the actor's drawing around the center of the actor's bounding box
+        * @method setCenterDrawing
+        * @param center {boolean} Indicates to center the drawing around the actor
+        */
+        Actor.prototype.setCenterDrawing = function (center) {
+            this.centerDrawingY = true;
+            this.centerDrawingX = true;
+        };
+
+        /**
+        * Gets the left edge of the actor
+        * @method getLeft
+        * @returns number
+        */
+        Actor.prototype.getLeft = function () {
+            return this.x;
+        };
+
+        /**
+        * Gets the right edge of the actor
+        * @method getRight
+        * @returns number
+        */
+        Actor.prototype.getRight = function () {
+            return this.x + this.getWidth();
+        };
+
+        /**
+        * Gets the top edge of the actor
+        * @method getTop
+        * @returns number
+        */
+        Actor.prototype.getTop = function () {
+            return this.y;
+        };
+
+        /**
+        * Gets the bottom edge of the actor
+        * @method getBottom
+        * @returns number
+        */
+        Actor.prototype.getBottom = function () {
+            return this.y + this.getHeight();
+        };
+
+        /**
+        * Gets the x value of the Actor in global coordinates
+        * @method getGlobalX
+        * @returns number
+        */
+        Actor.prototype.getGlobalX = function () {
+            var previous;
+            var current = this.parent;
+            while (current) {
+                previous = current;
+                current = current.parent;
+            }
+            if (previous) {
+                return this.x + previous.x;
+            } else {
+                return this.x;
+            }
+        };
+
+        /**
+        * Gets the y value of the Actor in global coordinates
+        * @method getGlobalY
+        * @returns number
+        */
+        Actor.prototype.getGlobalY = function () {
+            var previous;
+            var current = this.parent;
+            while (current) {
+                previous = current;
+                current = current.parent;
+            }
+            if (previous) {
+                return this.y + previous.y;
+            } else {
+                return this.y;
+            }
+        };
+
+        /**
+        * Returns the actor's bounding box calculated for this instant.
+        * @method getBounds
+        * @returns ICollidable
+        */
+        Actor.prototype.getBounds = function () {
+            if (this.collisionStrategy === 1 /* SeparatingAxis */) {
+                var actorPos = new ex.Vector(this.x, this.y);
+
+                var topLeft = new ex.Point(0, 0).add(actorPos);
+                var topRight = new ex.Point(this.getWidth(), 0).add(actorPos);
+                var bottomRight = new ex.Point(this.getWidth(), this.getHeight()).add(actorPos);
+                var bottomLeft = new ex.Point(0, this.getHeight()).add(actorPos);
+
+                return new ex.SATBoundingBox([topLeft, topRight, bottomRight, bottomLeft]);
+            } else {
+                return new ex.BoundingBox(this.getGlobalX(), this.getGlobalY(), this.getGlobalX() + this.getWidth(), this.getGlobalY() + this.getHeight());
+            }
+        };
+
+        /**
+        * Tests whether the x/y specified are contained in the actor
+        * @method contains
+        * @param x {number} X coordinate to test (in world coordinates)
+        * @param y {number} Y coordinate to test (in world coordinates)
+        */
+        Actor.prototype.contains = function (x, y) {
+            return this.getBounds().contains(new ex.Point(x, y));
+        };
+
+        /**
+        * Returns the side of the collision based on the intersection
+        * @method getSideFromIntersect
+        * @param intersect {Vector} The displacement vector returned by a collision
+        * @returns Side
+        */
+        Actor.prototype.getSideFromIntersect = function (intersect) {
+            if (intersect) {
+                if (Math.abs(intersect.x) < Math.abs(intersect.y)) {
+                    if (intersect.x < 0) {
+                        return 4 /* Right */;
+                    }
+                    return 3 /* Left */;
+                } else {
+                    if (intersect.y < 0) {
+                        return 2 /* Bottom */;
+                    }
+                    return 1 /* Top */;
+                }
+            }
+            return 0 /* None */;
+        };
+
+        /**
+        * Test whether the actor has collided with another actor, returns the side of the current actor that collided.
+        * @method collides
+        * @param actor {Actor} The other actor to test
+        * @returns Side
+        */
+        Actor.prototype.collidesWithSide = function (actor) {
+            var separationVector = this.collides(actor);
+            if (!separationVector) {
+                return 0 /* None */;
+            }
+
+            if (Math.abs(separationVector.x) < Math.abs(separationVector.y)) {
+                if (this.x < actor.x) {
+                    return 4 /* Right */;
+                } else {
+                    return 3 /* Left */;
+                }
+            } else {
+                if (this.y < actor.y) {
+                    return 2 /* Bottom */;
+                } else {
+                    return 1 /* Top */;
+                }
+            }
+
+            return 0 /* None */;
+        };
+
+        /**
+        * Test whether the actor has collided with another actor, returns the intersection vector on collision. Returns
+        * null when there is no collision;
+        * @method collides
+        * @param actor {Actor} The other actor to test
+        * @returns Vector
+        */
+        Actor.prototype.collides = function (actor) {
+            var bounds = this.getBounds();
+            var otherBounds = actor.getBounds();
+
+            var intersect = bounds.collides(otherBounds);
+            return intersect;
+        };
+
+        /**
+        * Register a handler to fire when this actor collides with another in a specified group
+        * @method onCollidesWith
+        * @param group {string} The group name to listen for
+        * @param func {callback} The callback to fire on collision with another actor from the group. The callback is passed the other actor.
+        */
+        Actor.prototype.onCollidesWith = function (group, func) {
+            if (!this._collisionHandlers[group]) {
+                this._collisionHandlers[group] = [];
+            }
+            this._collisionHandlers[group].push(func);
+        };
+
+        /**
+        * Removes all collision handlers for this group on this actor
+        * @method removeCollidesWith
+        * @param group {string} Group to remove all handlers for on this actor.
+        */
+        Actor.prototype.removeCollidesWith = function (group) {
+            this._collisionHandlers[group] = [];
+        };
+
+        /**
+        * Returns true if the two actors are less than or equal to the distance specified from each other
+        * @method within
+        * @param actor {Actor} Actor to test
+        * @param distance {number} Distance in pixels to test
+        * @returns boolean
+        */
+        Actor.prototype.within = function (actor, distance) {
+            return Math.sqrt(Math.pow(this.x - actor.x, 2) + Math.pow(this.y - actor.y, 2)) <= distance;
+        };
+
+        /**
+        * Clears all queued actions from the Actor
+        * @method clearActions
+        */
+        Actor.prototype.clearActions = function () {
+            this.actionQueue.clearActions();
+        };
+
+        /**
+        * This method will move an actor to the specified x and y position at the
+        * speed specified (in pixels per second) and return back the actor. This
+        * method is part of the actor 'Action' fluent API allowing action chaining.
+        * @method moveTo
+        * @param x {number} The x location to move the actor to
+        * @param y {number} The y location to move the actor to
+        * @param speed {number} The speed in pixels per second to move
+        * @returns Actor
+        */
+        Actor.prototype.moveTo = function (x, y, speed) {
+            this.actionQueue.add(new ex.Internal.Actions.MoveTo(this, x, y, speed));
+            return this;
+        };
+
+        /**
+        * This method will move an actor to the specified x and y position by a
+        * certain time (in milliseconds). This method is part of the actor
+        * 'Action' fluent API allowing action chaining.
+        * @method moveBy
+        * @param x {number} The x location to move the actor to
+        * @param y {number} The y location to move the actor to
+        * @param time {number} The time it should take the actor to move to the new location in milliseconds
+        * @returns Actor
+        */
+        Actor.prototype.moveBy = function (x, y, time) {
+            this.actionQueue.add(new ex.Internal.Actions.MoveBy(this, x, y, time));
+            return this;
+        };
+
+        /**
+        * This method will rotate an actor to the specified angle at the speed
+        * specified (in radians per second) and return back the actor. This
+        * method is part of the actor 'Action' fluent API allowing action chaining.
+        * @method rotateTo
+        * @param angleRadians {number} The angle to rotate to in radians
+        * @param speed {number} The angular velocity of the rotation specified in radians per second
+        * @returns Actor
+        */
+        Actor.prototype.rotateTo = function (angleRadians, speed) {
+            this.actionQueue.add(new ex.Internal.Actions.RotateTo(this, angleRadians, speed));
+            return this;
+        };
+
+        /**
+        * This method will rotate an actor to the specified angle by a certain
+        * time (in milliseconds) and return back the actor. This method is part
+        * of the actor 'Action' fluent API allowing action chaining.
+        * @method rotateBy
+        * @param angleRadians {number} The angle to rotate to in radians
+        * @param time {number} The time it should take the actor to complete the rotation in milliseconds
+        * @returns Actor
+        */
+        Actor.prototype.rotateBy = function (angleRadians, time) {
+            this.actionQueue.add(new ex.Internal.Actions.RotateBy(this, angleRadians, time));
+            return this;
+        };
+
+        /**
+        * This method will scale an actor to the specified size at the speed
+        * specified (in magnitude increase per second) and return back the
+        * actor. This method is part of the actor 'Action' fluent API allowing
+        * action chaining.
+        * @method scaleTo
+        * @param size {number} The scaling factor to apply
+        * @param speed {number} The speed of scaling specified in magnitude increase per second
+        * @returns Actor
+        */
+        Actor.prototype.scaleTo = function (sizeX, sizeY, speedX, speedY) {
+            this.actionQueue.add(new ex.Internal.Actions.ScaleTo(this, sizeX, sizeY, speedX, speedY));
+            return this;
+        };
+
+        /**
+        * This method will scale an actor to the specified size by a certain time
+        * (in milliseconds) and return back the actor. This method is part of the
+        * actor 'Action' fluent API allowing action chaining.
+        * @method scaleBy
+        * @param size {number} The scaling factor to apply
+        * @param time {number} The time it should take to complete the scaling in milliseconds
+        * @returns Actor
+        */
+        Actor.prototype.scaleBy = function (sizeX, sizeY, time) {
+            this.actionQueue.add(new ex.Internal.Actions.ScaleBy(this, sizeX, sizeY, time));
+            return this;
+        };
+
+        /**
+        * This method will cause an actor to blink (become visible and and
+        * invisible) at a frequency (blinks per second) for a duration (in
+        * milliseconds). Optionally, you may specify blinkTime, which indicates
+        * the amount of time the actor is invisible during each blink.<br/>
+        * To have the actor blink 3 times in 1 second, call actor.blink(3, 1000).<br/>
+        * This method is part of the actor 'Action' fluent API allowing action chaining.
+        * @method blink
+        * @param frequency {number} The blinks per second
+        * @param duration {number} The total duration of the blinking specified in milliseconds
+        * @param [blinkTime=200] {number} The amount of time each blink that the actor is visible in milliseconds
+        * @returns Actor
+        */
+        Actor.prototype.blink = function (frequency, duration, blinkTime) {
+            this.actionQueue.add(new ex.Internal.Actions.Blink(this, frequency, duration, blinkTime));
+            return this;
+        };
+
+        /**
+        * This method will cause an actor's opacity to change from its current value
+        * to the provided value by a specified time (in milliseconds). This method is
+        * part of the actor 'Action' fluent API allowing action chaining.
+        * @method fade
+        * @param opacity {number} The ending opacity
+        * @param time {number} The time it should take to fade the actor (in milliseconds)
+        * @returns Actor
+        */
+        Actor.prototype.fade = function (opacity, time) {
+            this.actionQueue.add(new ex.Internal.Actions.Fade(this, opacity, time));
+            return this;
+        };
+
+        /**
+        * This method will delay the next action from executing for a certain
+        * amount of time (in milliseconds). This method is part of the actor
+        * 'Action' fluent API allowing action chaining.
+        * @method delay
+        * @param time {number} The amount of time to delay the next action in the queue from executing in milliseconds
+        * @returns Actor
+        */
+        Actor.prototype.delay = function (time) {
+            this.actionQueue.add(new ex.Internal.Actions.Delay(this, time));
+            return this;
+        };
+
+        /**
+        * This method will add an action to the queue that will remove the actor from the
+        * scene once it has completed its previous actions. Any actions on the
+        * action queue after this action will not be executed.
+        * @method die
+        * @returns Actor
+        */
+        Actor.prototype.die = function () {
+            this.actionQueue.add(new ex.Internal.Actions.Die(this));
+            return this;
+        };
+
+        /**
+        * This method allows you to call an arbitrary method as the next action in the
+        * action queue. This is useful if you want to execute code in after a specific
+        * action, i.e An actor arrives at a destinatino after traversing a path
+        * @method callMethod
+        * @returns Actor
+        */
+        Actor.prototype.callMethod = function (method) {
+            this.actionQueue.add(new ex.Internal.Actions.CallMethod(this, method));
+            return this;
+        };
+
+        /**
+        * This method will cause the actor to repeat all of the previously
+        * called actions a certain number of times. If the number of repeats
+        * is not specified it will repeat forever. This method is part of
+        * the actor 'Action' fluent API allowing action chaining
+        * @method repeat
+        * @param [times=undefined] {number} The number of times to repeat all the previous actions in the action queue. If nothing is specified the actions will repeat forever
+        * @returns Actor
+        */
+        Actor.prototype.repeat = function (times) {
+            if (!times) {
+                this.repeatForever();
+                return this;
+            }
+            this.actionQueue.add(new ex.Internal.Actions.Repeat(this, times, this.actionQueue.getActions()));
+
+            return this;
+        };
+
+        /**
+        * This method will cause the actor to repeat all of the previously
+        * called actions forever. This method is part of the actor 'Action'
+        * fluent API allowing action chaining.
+        * @method repeatForever
+        * @returns Actor
+        */
+        Actor.prototype.repeatForever = function () {
+            this.actionQueue.add(new ex.Internal.Actions.RepeatForever(this, this.actionQueue.getActions()));
+            return this;
+        };
+
+        /**
+        * This method will cause the actor to follow another at a specified distance
+        * @method follow
+        * @param actor {Actor} The actor to follow
+        * @param [followDistance=currentDistance] {number} The distance to maintain when following, if not specified the actor will follow at the current distance.
+        * @returns Actor
+        */
+        Actor.prototype.follow = function (actor, followDistance) {
+            if (followDistance == undefined) {
+                this.actionQueue.add(new ex.Internal.Actions.Follow(this, actor));
+            } else {
+                this.actionQueue.add(new ex.Internal.Actions.Follow(this, actor, followDistance));
+            }
+            return this;
+        };
+
+        /**
+        * This method will cause the actor to move towards another until they
+        * collide "meet" at a specified speed.
+        * @method meet
+        * @param actor {Actor} The actor to meet
+        * @param [speed=0] {number} The speed in pixels per second to move, if not specified it will match the speed of the other actor
+        * @returns Actor
+        */
+        Actor.prototype.meet = function (actor, speed) {
+            if (speed == undefined) {
+                this.actionQueue.add(new ex.Internal.Actions.Meet(this, actor));
+            } else {
+                this.actionQueue.add(new ex.Internal.Actions.Meet(this, actor, speed));
+            }
+            return this;
+        };
+
+        /**
+        * Called by the Engine, updates the state of the actor
+        * @method update
+        * @param engine {Engine} The reference to the current game engine
+        * @param delta {number} The time elapsed since the last update in milliseconds
+        */
+        Actor.prototype.update = function (engine, delta) {
+            var _this = this;
+            if (!this._isInitialized) {
+                this.onInitialize(engine);
+                this.eventDispatcher.publish('initialize', new ex.InitializeEvent(engine));
+                this._isInitialized = true;
+            }
+
+            this.sceneNode.update(engine, delta);
+            var eventDispatcher = this.eventDispatcher;
+
+            // Update event dispatcher
+            eventDispatcher.update();
+
+            // Update action queue
+            this.actionQueue.update(delta);
+
+            // Update placements based on linear algebra
+            this.x += this.dx * delta / 1000;
+            this.y += this.dy * delta / 1000;
+
+            this.dx += this.ax * delta / 1000;
+            this.dy += this.ay * delta / 1000;
+
+            this.rotation += this.rx * delta / 1000;
+
+            this.scaleX += this.sx * delta / 1000;
+            this.scaleY += this.sy * delta / 1000;
+
+            if (this.collisionType !== 0 /* PreventCollision */) {
+                // Retrieve the list of potential colliders, exclude killed, prevented, and self
+                var potentialColliders = engine.currentScene.children.filter(function (actor) {
+                    return !actor._isKilled && actor.collisionType !== 0 /* PreventCollision */ && _this !== actor;
+                });
+
+                for (var i = 0; i < potentialColliders.length; i++) {
+                    var intersectActor;
+                    var side;
+                    var collider = potentialColliders[i];
+
+                    if (intersectActor = this.collides(collider)) {
+                        side = this.getSideFromIntersect(intersectActor);
+
+                        // Publish collision events on both participants
+                        eventDispatcher.publish('collision', new ex.CollisionEvent(this, collider, side, intersectActor));
+                        collider.eventDispatcher.publish('collision', new ex.CollisionEvent(collider, this, ex.Util.getOppositeSide(side), intersectActor.scale(-1.0)));
+
+                        // Send collision group updates
+                        collider.collisionGroups.forEach(function (group) {
+                            if (_this._collisionHandlers[group]) {
+                                _this._collisionHandlers[group].forEach(function (handler) {
+                                    handler.call(_this, collider);
+                                });
+                            }
+                        });
+                        if (this.collisionType === 4 /* Fixed */ && collider.collisionType !== 1 /* Passive */) {
+                            // If you are fixed collision type move others out of your way
+                            collider.x -= intersectActor.x;
+                            collider.y -= intersectActor.y;
+                        }
+
+                        // If the actor is active push the actor out if its not passive
+                        if ((this.collisionType === 2 /* Active */ || this.collisionType === 3 /* Elastic */) && collider.collisionType !== 1 /* Passive */) {
+                            if (this.collisionStrategy === 1 /* SeparatingAxis */) {
+                                this.x += intersectActor.x;
+                                this.y += intersectActor.y;
+                            } else {
+                                if (Math.abs(intersectActor.y) < Math.abs(intersectActor.x)) {
+                                    this.y += intersectActor.y;
+                                } else {
+                                    this.x += intersectActor.x;
+                                }
+                            }
+
+                            // Naive elastic bounce
+                            if (this.collisionType === 3 /* Elastic */) {
+                                if (side === 3 /* Left */) {
+                                    this.dx = Math.abs(this.dx);
+                                } else if (side === 4 /* Right */) {
+                                    this.dx = -Math.abs(this.dx);
+                                } else if (side === 1 /* Top */) {
+                                    this.dy = Math.abs(this.dy);
+                                } else if (side === 2 /* Bottom */) {
+                                    this.dy = -Math.abs(this.dy);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                for (var j = 0; j < engine.currentScene.collisionMaps.length; j++) {
+                    var map = engine.currentScene.collisionMaps[j];
+                    var intersectMap;
+                    var side = 0 /* None */;
+                    var max = 2;
+                    var hasBounced = false;
+
+                    while (intersectMap = map.collides(this)) {
+                        //iters.push(intersectMap);
+                        if (max-- < 0) {
+                            break;
+                        }
+                        side = this.getSideFromIntersect(intersectMap);
+                        eventDispatcher.publish('collision', new ex.CollisionEvent(this, null, side, intersectMap));
+                        if (this.collisionType === 2 /* Active */ || this.collisionType === 3 /* Elastic */) {
+                            //var intersectMap = map.getOverlap(this);
+                            if (Math.abs(intersectMap.y) < Math.abs(intersectMap.x)) {
+                                this.y += intersectMap.y;
+                            } else {
+                                this.x += intersectMap.x;
+                            }
+
+                            // Naive elastic bounce
+                            if (this.collisionType === 3 /* Elastic */ && !hasBounced) {
+                                hasBounced = true;
+                                if (side === 3 /* Left */) {
+                                    this.dx = Math.abs(this.dx);
+                                } else if (side === 4 /* Right */) {
+                                    this.dx = -Math.abs(this.dx);
+                                } else if (side === 1 /* Top */) {
+                                    this.dy = Math.abs(this.dy);
+                                } else if (side === 2 /* Bottom */) {
+                                    this.dy = -Math.abs(this.dy);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Publish other events
+            engine.keys.forEach(function (key) {
+                eventDispatcher.publish(ex.InputKey[key], new ex.KeyEvent(key));
+            });
+
+            // Publish click events
+            engine.clicks.forEach(function (e) {
+                if (_this.contains(e.x, e.y)) {
+                    eventDispatcher.publish(ex.EventType[10 /* Click */], new ex.Click(e.x, e.y, e.mouseEvent));
+                    eventDispatcher.publish(ex.EventType[3 /* MouseDown */], new ex.MouseDown(e.x, e.y, e.mouseEvent));
+                }
+            });
+
+            engine.mouseMove.forEach(function (e) {
+                if (_this.contains(e.x, e.y)) {
+                    eventDispatcher.publish(ex.EventType[4 /* MouseMove */], new ex.MouseMove(e.x, e.y, e.mouseEvent));
+                }
+            });
+
+            engine.mouseUp.forEach(function (e) {
+                if (_this.contains(e.x, e.y)) {
+                    eventDispatcher.publish(ex.EventType[5 /* MouseUp */], new ex.MouseUp(e.x, e.y, e.mouseEvent));
+                }
+            });
+
+            engine.touchStart.forEach(function (e) {
+                if (_this.contains(e.x, e.y)) {
+                    eventDispatcher.publish(ex.EventType[6 /* TouchStart */], new ex.TouchStart(e.x, e.y));
+                }
+            });
+
+            engine.touchMove.forEach(function (e) {
+                if (_this.contains(e.x, e.y)) {
+                    eventDispatcher.publish(ex.EventType[7 /* TouchMove */], new ex.TouchMove(e.x, e.y));
+                }
+            });
+
+            engine.touchEnd.forEach(function (e) {
+                if (_this.contains(e.x, e.y)) {
+                    eventDispatcher.publish(ex.EventType[8 /* TouchEnd */], new ex.TouchEnd(e.x, e.y));
+                }
+            });
+
+            engine.touchCancel.forEach(function (e) {
+                if (_this.contains(e.x, e.y)) {
+                    eventDispatcher.publish(ex.EventType[9 /* TouchCancel */], new ex.TouchCancel(e.x, e.y));
+                }
+            });
+
+            var actorScreenCoords = engine.worldToScreenCoordinates(new ex.Point(this.getGlobalX(), this.getGlobalY()));
+            var zoom = 1.0;
+            if (engine.camera) {
+                zoom = engine.camera.getZoom();
+            }
+
+            if (!this.isOffScreen) {
+                if (actorScreenCoords.x + this.getWidth() * zoom < 0 || actorScreenCoords.y + this.getHeight() * zoom < 0 || actorScreenCoords.x > engine.width || actorScreenCoords.y > engine.height) {
+                    eventDispatcher.publish('exitviewport', new ex.ExitViewPortEvent());
+                    this.isOffScreen = true;
+                }
+            } else {
+                if (actorScreenCoords.x + this.getWidth() * zoom > 0 && actorScreenCoords.y + this.getHeight() * zoom > 0 && actorScreenCoords.x < engine.width && actorScreenCoords.y < engine.height) {
+                    eventDispatcher.publish('enterviewport', new ex.EnterViewPortEvent());
+                    this.isOffScreen = false;
+                }
+            }
+
+            eventDispatcher.publish(ex.EventType[16 /* Update */], new ex.UpdateEvent(delta));
+        };
+
+        /**
+        * Called by the Engine, draws the actor to the screen
+        * @method draw
+        * @param ctx {CanvasRenderingContext2D} The rendering context
+        * @param delta {number} The time since the last draw in milliseconds
+        */
+        Actor.prototype.draw = function (ctx, delta) {
+            // only draw if onscreen
+            if (this.isOffScreen)
+                return;
+
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.rotate(this.rotation);
+            ctx.scale(this.scaleX, this.scaleY);
+
+            if (this.previousOpacity != this.opacity) {
+                for (var drawing in this.frames) {
+                    this.frames[drawing].addEffect(new ex.Effects.Opacity(this.opacity));
+                }
+
+                this.previousOpacity = this.opacity;
+            }
+
+            if (!this.invisible) {
+                if (this.currentDrawing) {
+                    var xDiff = 0;
+                    var yDiff = 0;
+                    if (this.centerDrawingX) {
+                        xDiff = (this.currentDrawing.width * this.currentDrawing.getScaleX() - this.width) / 2;
+                    }
+
+                    if (this.centerDrawingY) {
+                        yDiff = (this.currentDrawing.height * this.currentDrawing.getScaleY() - this.height) / 2;
+                    }
+
+                    //var xDiff = (this.currentDrawing.width*this.currentDrawing.getScale() - this.width)/2;
+                    //var yDiff = (this.currentDrawing.height*this.currentDrawing.getScale() - this.height)/2;
+                    this.currentDrawing.draw(ctx, -xDiff, -yDiff);
+                } else {
+                    if (this.color)
+                        this.color.a = this.opacity;
+                    ctx.fillStyle = this.color ? this.color.toString() : (new ex.Color(0, 0, 0)).toString();
+                    ctx.fillRect(0, 0, this.width, this.height);
+                }
+            }
+
+            this.sceneNode.draw(ctx, delta);
+
+            ctx.restore();
+        };
+
+        /**
+        * Called by the Engine, draws the actors debugging to the screen
+        * @method debugDraw
+        * @param ctx {CanvasRenderingContext2D} The rendering context
+        */
+        Actor.prototype.debugDraw = function (ctx) {
+            // Meant to draw debug information about actors
+            ctx.save();
+            ctx.translate(this.x, this.y);
+
+            ctx.fillStyle = ex.Color.Yellow.toString();
+            ctx.strokeStyle = ex.Color.Yellow.toString();
+            ctx.beginPath();
+            ctx.rect(0, 0, this.getWidth(), this.getHeight());
+            ctx.stroke();
+
+            this.sceneNode.debugDraw(ctx);
+            ctx.restore();
+
+            this.getBounds().debugDraw(ctx);
+        };
+        return Actor;
+    })(ex.Util.Class);
+    ex.Actor = Actor;
+
+    /**
+    * Enum representing the different horizontal text alignments
+    * @class TextAlign
+    */
+    (function (TextAlign) {
+        /**
+        * The text is left-aligned.
+        * @property Left
+        * @static
+        */
+        TextAlign[TextAlign["Left"] = 0] = "Left";
+
+        /**
+        * The text is right-aligned.
+        * @property Right
+        * @static
+        */
+        TextAlign[TextAlign["Right"] = 1] = "Right";
+
+        /**
+        * The text is centered.
+        * @property Center
+        * @static
+        */
+        TextAlign[TextAlign["Center"] = 2] = "Center";
+
+        /**
+        * The text is aligned at the normal start of the line (left-aligned for left-to-right locales, right-aligned for right-to-left locales).
+        * @property Start
+        * @static
+        */
+        TextAlign[TextAlign["Start"] = 3] = "Start";
+
+        /**
+        * The text is aligned at the normal end of the line (right-aligned for left-to-right locales, left-aligned for right-to-left locales).
+        * @property End
+        * @static
+        */
+        TextAlign[TextAlign["End"] = 4] = "End";
+    })(ex.TextAlign || (ex.TextAlign = {}));
+    var TextAlign = ex.TextAlign;
+
+    /**
+    * Enum representing the different baseline text alignments
+    * @class BaseAlign
+    */
+    (function (BaseAlign) {
+        /**
+        * The text baseline is the top of the em square.
+        * @property Top
+        * @static
+        */
+        BaseAlign[BaseAlign["Top"] = 0] = "Top";
+
+        /**
+        * The text baseline is the hanging baseline.  Currently unsupported; this will act like alphabetic.
+        * @property Hanging
+        * @static
+        */
+        BaseAlign[BaseAlign["Hanging"] = 1] = "Hanging";
+
+        /**
+        * The text baseline is the middle of the em square.
+        * @property Middle
+        * @static
+        */
+        BaseAlign[BaseAlign["Middle"] = 2] = "Middle";
+
+        /**
+        * The text baseline is the normal alphabetic baseline.
+        * @property Alphabetic
+        * @static
+        */
+        BaseAlign[BaseAlign["Alphabetic"] = 3] = "Alphabetic";
+
+        /**
+        * The text baseline is the ideographic baseline; this is the bottom of
+        * the body of the characters, if the main body of characters protrudes
+        * beneath the alphabetic baseline.  Currently unsupported; this will
+        * act like alphabetic.
+        * @property Ideographic
+        * @static
+        */
+        BaseAlign[BaseAlign["Ideographic"] = 4] = "Ideographic";
+
+        /**
+        * The text baseline is the bottom of the bounding box.  This differs
+        * from the ideographic baseline in that the ideographic baseline
+        * doesn't consider descenders.
+        * @property Bottom
+        * @static
+        */
+        BaseAlign[BaseAlign["Bottom"] = 5] = "Bottom";
+    })(ex.BaseAlign || (ex.BaseAlign = {}));
+    var BaseAlign = ex.BaseAlign;
+
+    /**
+    * Labels are the way to draw small amounts of text to the screen in Excalibur. They are
+    * actors and inherit all of the benifits and capabilities.
+    * @class Label
+    * @extends Actor
+    * @constructor
+    * @param [text=empty] {string} The text of the label
+    * @param [x=0] {number} The x position of the label
+    * @param [y=0] {number} The y position of the label
+    * @param [font=sans-serif] {string} Use any valid css font string for the label's font. Default is "10px sans-serif".
+    * @param [spriteFont=undefined] {SpriteFont} Use an Excalibur sprite font for the label's font, if a SpriteFont is provided it will take precendence over a css font.
+    *
+    */
+    var Label = (function (_super) {
+        __extends(Label, _super);
+        function Label(text, x, y, font, spriteFont) {
+            _super.call(this, x, y);
+            /**
+            * Gets or sets the letter spacing on a Label. Only supported with Sprite Fonts.
+            * @property [letterSpacing=0] {number}
+            */
+            this.letterSpacing = 0;
+            this.caseInsensitive = true;
+            this._textShadowOn = false;
+            this._shadowOffsetX = 0;
+            this._shadowOffsetY = 0;
+            this._shadowColor = ex.Color.Black.clone();
+            this._shadowColorDirty = false;
+            this._textSprites = {};
+            this._shadowSprites = {};
+            this._color = ex.Color.Black.clone();
+            this.text = text || "";
+            this.color = ex.Color.Black.clone();
+            this.spriteFont = spriteFont;
+            this.collisionType = 0 /* PreventCollision */;
+            this.font = font || "10px sans-serif"; // coallesce to default canvas font
+            if (spriteFont) {
+                this._textSprites = spriteFont.getTextSprites();
+            }
+        }
+        /**
+        * Returns the width of the text in the label (in pixels);
+        * @method getTextWidth {number}
+        * @param ctx {CanvasRenderingContext2D} Rending context to measure the string with
+        */
+        Label.prototype.getTextWidth = function (ctx) {
+            var oldFont = ctx.font;
+            ctx.font = this.font;
+            var width = ctx.measureText(this.text).width;
+            ctx.font = oldFont;
+            return width;
+        };
+
+        // TypeScript doesn't support string enums :(
+        Label.prototype._lookupTextAlign = function (textAlign) {
+            switch (textAlign) {
+                case 0 /* Left */:
+                    return "left";
+                    break;
+                case 1 /* Right */:
+                    return "right";
+                    break;
+                case 2 /* Center */:
+                    return "center";
+                    break;
+                case 4 /* End */:
+                    return "end";
+                    break;
+                case 3 /* Start */:
+                    return "start";
+                    break;
+                default:
+                    return "start";
+                    break;
+            }
+        };
+
+        Label.prototype._lookupBaseAlign = function (baseAlign) {
+            switch (baseAlign) {
+                case 3 /* Alphabetic */:
+                    return "alphabetic";
+                    break;
+                case 5 /* Bottom */:
+                    return "bottom";
+                    break;
+                case 1 /* Hanging */:
+                    return "hangin";
+                    break;
+                case 4 /* Ideographic */:
+                    return "ideographic";
+                    break;
+                case 2 /* Middle */:
+                    return "middle";
+                    break;
+                case 0 /* Top */:
+                    return "top";
+                    break;
+                default:
+                    return "alphabetic";
+                    break;
+            }
+        };
+
+        /**
+        * Sets the text shadow for sprite fonts
+        * @method setTextShadow
+        * @param offsetX {number} The x offset in pixels to place the shadow
+        * @param offsetY {number} The y offset in pixles to place the shadow
+        * @param shadowColor {Color} The color of the text shadow
+        */
+        Label.prototype.setTextShadow = function (offsetX, offsetY, shadowColor) {
+            this._textShadowOn = true;
+            this._shadowOffsetX = offsetX;
+            this._shadowOffsetY = offsetY;
+            this._shadowColor = shadowColor.clone();
+            this._shadowColorDirty = true;
+            for (var character in this._textSprites) {
+                this._shadowSprites[character] = this._textSprites[character].clone();
+            }
+        };
+
+        /**
+        * Clears the current text shadow
+        * @method clearTextShadow
+        */
+        Label.prototype.clearTextShadow = function () {
+            this._textShadowOn = false;
+            this._shadowOffsetX = 0;
+            this._shadowOffsetY = 0;
+            this._shadowColor = ex.Color.Black.clone();
+        };
+
+        Label.prototype.update = function (engine, delta) {
+            _super.prototype.update.call(this, engine, delta);
+
+            if (this.spriteFont && this._color !== this.color) {
+                for (var character in this._textSprites) {
+                    this._textSprites[character].clearEffects();
+                    this._textSprites[character].addEffect(new ex.Effects.Fill(this.color.clone()));
+                    this._color = this.color;
+                }
+            }
+
+            if (this.spriteFont && this._textShadowOn && this._shadowColorDirty && this._shadowColor) {
+                for (var character in this._shadowSprites) {
+                    this._shadowSprites[character].clearEffects();
+                    this._shadowSprites[character].addEffect(new ex.Effects.Fill(this._shadowColor.clone()));
+                }
+                this._shadowColorDirty = false;
+            }
+        };
+
+        Label.prototype.draw = function (ctx, delta) {
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.scale(this.scaleX, this.scaleY);
+            ctx.rotate(this.rotation);
+
+            if (this._textShadowOn) {
+                ctx.save();
+                ctx.translate(this._shadowOffsetX, this._shadowOffsetY);
+                this._fontDraw(ctx, delta, this._shadowSprites);
+                ctx.restore();
+            }
+            this._fontDraw(ctx, delta, this._textSprites);
+
+            _super.prototype.draw.call(this, ctx, delta);
+            ctx.restore();
+        };
+
+        Label.prototype._fontDraw = function (ctx, delta, sprites) {
+            if (!this.invisible) {
+                if (this.spriteFont) {
+                    var currX = 0;
+
+                    for (var i = 0; i < this.text.length; i++) {
+                        var character = this.text[i];
+                        if (this.caseInsensitive) {
+                            character = character.toLowerCase();
+                        }
+                        try  {
+                            var charSprite = sprites[character];
+                            if (this.previousOpacity !== this.opacity) {
+                                charSprite.clearEffects();
+                                charSprite.addEffect(new ex.Effects.Opacity(this.opacity));
+                            }
+                            charSprite.draw(ctx, currX, 0);
+                            currX += (charSprite.swidth + this.letterSpacing);
+                        } catch (e) {
+                            ex.Logger.getInstance().error("SpriteFont Error drawing char " + character);
+                        }
+                    }
+                    if (this.previousOpacity !== this.opacity) {
+                        this.previousOpacity = this.opacity;
+                    }
+                    //this.spriteFont.draw(ctx, 0, 0, this.text, color, this.letterSpacing);
+                } else {
+                    var oldAlign = ctx.textAlign;
+                    var oldTextBaseline = ctx.textBaseline;
+
+                    ctx.textAlign = this._lookupTextAlign(this.textAlign);
+                    ctx.textBaseline = this._lookupBaseAlign(this.baseAlign);
+                    if (this.color) {
+                        this.color.a = this.opacity;
+                    }
+                    ctx.fillStyle = this.color.toString();
+                    ctx.font = this.font;
+                    if (this.maxWidth) {
+                        ctx.fillText(this.text, 0, 0, this.maxWidth);
+                    } else {
+                        ctx.fillText(this.text, 0, 0);
+                    }
+
+                    ctx.textAlign = oldAlign;
+                    ctx.textBaseline = oldTextBaseline;
+                }
+            }
+        };
+
+        Label.prototype.debugDraw = function (ctx) {
+            _super.prototype.debugDraw.call(this, ctx);
+        };
+        return Label;
+    })(Actor);
+    ex.Label = Label;
+
+    /**
+    * Triggers a method of firing arbitrary code on collision. These are useful
+    * as 'buttons', 'switches', or to trigger effects in a game. By defualt triggers
+    * are invisible, and can only be seen with debug mode enabled on the Engine.
+    * @class Trigger
+    * @constructor
+    * @param [x=0] {number} The x position of the trigger
+    * @param [y=0] {number} The y position of the trigger
+    * @param [width=0] {number} The width of the trigger
+    * @param [height=0] {number} The height of the trigger
+    * @param [action=null] {()=>void} Callback to fire when trigger is activated
+    * @param [repeats=1] {number} The number of times that this trigger should fire, by default it is 1, if -1 is supplied it will fire indefinitely
+    */
+    var Trigger = (function (_super) {
+        __extends(Trigger, _super);
+        function Trigger(x, y, width, height, action, repeats) {
+            _super.call(this, x, y, width, height);
+            this.action = function () {
+            };
+            this.repeats = 1;
+            this.target = null;
+            this.repeats = repeats || this.repeats;
+            this.action = action || this.action;
+            this.collisionType = 0 /* PreventCollision */;
+            this.eventDispatcher = new ex.EventDispatcher(this);
+            this.actionQueue = new ex.Internal.Actions.ActionQueue(this);
+        }
+        Trigger.prototype.update = function (engine, delta) {
+            var eventDispatcher = this.eventDispatcher;
+
+            // Update event dispatcher
+            eventDispatcher.update();
+
+            // Update action queue
+            this.actionQueue.update(delta);
+
+            // Update placements based on linear algebra
+            this.x += this.dx * delta / 1000;
+            this.y += this.dy * delta / 1000;
+
+            this.rotation += this.rx * delta / 1000;
+
+            this.scaleX += this.sx * delta / 1000;
+            this.scaleY += this.sy * delta / 1000;
+
+            // check for trigger collisions
+            if (this.target) {
+                if (this.collides(this.target)) {
+                    this.dispatchAction();
+                }
+            } else {
+                for (var i = 0; i < engine.currentScene.children.length; i++) {
+                    var other = engine.currentScene.children[i];
+                    if (other !== this && other.collisionType !== 0 /* PreventCollision */ && this.collides(other)) {
+                        this.dispatchAction();
+                    }
+                }
+            }
+
+            // remove trigger if its done, -1 repeat forever
+            if (this.repeats === 0) {
+                this.kill();
+            }
+        };
+
+        Trigger.prototype.dispatchAction = function () {
+            this.action.call(this);
+            this.repeats--;
+        };
+
+        Trigger.prototype.draw = function (ctx, delta) {
+            // does not draw
+            return;
+        };
+
+        Trigger.prototype.debugDraw = function (ctx) {
+            _super.prototype.debugDraw.call(this, ctx);
+
+            // Meant to draw debug information about actors
+            ctx.save();
+            ctx.translate(this.x, this.y);
+
+            // Currently collision primitives cannot rotate
+            // ctx.rotate(this.rotation);
+            ctx.fillStyle = ex.Color.Violet.toString();
+            ctx.strokeStyle = ex.Color.Violet.toString();
+            ctx.fillText('Trigger', 10, 10);
+            ctx.beginPath();
+            ctx.rect(0, 0, this.getWidth(), this.getHeight());
+            ctx.stroke();
+
+            ctx.restore();
+        };
+        return Trigger;
+    })(Actor);
+    ex.Trigger = Trigger;
+})(ex || (ex = {}));
+/// <reference path="Algebra.ts" />
+/// <reference path="Core.ts" />
+/// <reference path="Entities.ts" />
+var ex;
+(function (ex) {
+    (function (Internal) {
+        (function (Actions) {
+            var MoveTo = (function () {
+                function MoveTo(actor, destx, desty, speed) {
+                    this._started = false;
+                    this._stopped = false;
+                    this.actor = actor;
+                    this.end = new ex.Vector(destx, desty);
+                    this.speed = speed;
+                }
+                MoveTo.prototype.update = function (delta) {
+                    if (!this._started) {
+                        this._started = true;
+                        this.start = new ex.Vector(this.actor.x, this.actor.y);
+                        this.distance = this.start.distance(this.end);
+                        this.dir = this.end.minus(this.start).normalize();
+                    }
+                    var m = this.dir.scale(this.speed);
+                    this.actor.dx = m.x;
+                    this.actor.dy = m.y;
+
+                    //Logger.getInstance().log("Pos x: " + this.actor.x +"  y:" + this.actor.y, Log.DEBUG);
+                    if (this.isComplete(this.actor)) {
+                        this.actor.x = this.end.x;
+                        this.actor.y = this.end.y;
+                        this.actor.dy = 0;
+                        this.actor.dx = 0;
+                    }
+                };
+
+                MoveTo.prototype.isComplete = function (actor) {
+                    return this._stopped || (new ex.Vector(actor.x, actor.y)).distance(this.start) >= this.distance;
+                };
+
+                MoveTo.prototype.stop = function () {
+                    this.actor.dy = 0;
+                    this.actor.dx = 0;
+                    this._stopped = true;
+                };
+
+                MoveTo.prototype.reset = function () {
+                    this._started = false;
+                };
+                return MoveTo;
+            })();
+            Actions.MoveTo = MoveTo;
+
+            var MoveBy = (function () {
+                function MoveBy(actor, destx, desty, time) {
+                    this._started = false;
+                    this._stopped = false;
+                    this.actor = actor;
+                    this.end = new ex.Vector(destx, desty);
+                    if (time <= 0) {
+                        ex.Logger.getInstance().error("Attempted to moveBy time less than or equal to zero : " + time);
+                        throw new Error("Cannot move in time <= 0");
+                    }
+                    this.time = time;
+                }
+                MoveBy.prototype.update = function (delta) {
+                    if (!this._started) {
+                        this._started = true;
+                        this.start = new ex.Vector(this.actor.x, this.actor.y);
+                        this.distance = this.start.distance(this.end);
+                        this.dir = this.end.minus(this.start).normalize();
+                        this.speed = this.distance / (this.time / 1000);
+                    }
+
+                    var m = this.dir.scale(this.speed);
+                    this.actor.dx = m.x;
+                    this.actor.dy = m.y;
+
+                    //Logger.getInstance().log("Pos x: " + this.actor.x +"  y:" + this.actor.y, Log.DEBUG);
+                    if (this.isComplete(this.actor)) {
+                        this.actor.x = this.end.x;
+                        this.actor.y = this.end.y;
+                        this.actor.dy = 0;
+                        this.actor.dx = 0;
+                    }
+                };
+
+                MoveBy.prototype.isComplete = function (actor) {
+                    return this._stopped || (new ex.Vector(actor.x, actor.y)).distance(this.start) >= this.distance;
+                };
+
+                MoveBy.prototype.stop = function () {
+                    this.actor.dy = 0;
+                    this.actor.dx = 0;
+                    this._stopped = true;
+                };
+
+                MoveBy.prototype.reset = function () {
+                    this._started = false;
+                };
+                return MoveBy;
+            })();
+            Actions.MoveBy = MoveBy;
+
+            var Follow = (function () {
+                function Follow(actor, actorToFollow, followDistance) {
+                    this._started = false;
+                    this._stopped = false;
+                    this.actor = actor;
+                    this.actorToFollow = actorToFollow;
+                    this.current = new ex.Vector(this.actor.x, this.actor.y);
+                    this.end = new ex.Vector(actorToFollow.x, actorToFollow.y);
+                    this.maximumDistance = (followDistance != undefined) ? followDistance : this.current.distance(this.end);
+                    this.speed = 0;
+                }
+                Follow.prototype.update = function (delta) {
+                    if (!this._started) {
+                        this._started = true;
+                        this.distanceBetween = this.current.distance(this.end);
+                        this.dir = this.end.minus(this.current).normalize();
+                    }
+
+                    var actorToFollowSpeed = Math.sqrt(Math.pow(this.actorToFollow.dx, 2) + Math.pow(this.actorToFollow.dy, 2));
+                    if (actorToFollowSpeed != 0) {
+                        this.speed = actorToFollowSpeed;
+                    }
+                    this.current.x = this.actor.x;
+                    this.current.y = this.actor.y;
+
+                    this.end.x = this.actorToFollow.x;
+                    this.end.y = this.actorToFollow.y;
+                    this.distanceBetween = this.current.distance(this.end);
+                    this.dir = this.end.minus(this.current).normalize();
+
+                    if (this.distanceBetween >= this.maximumDistance) {
+                        var m = this.dir.scale(this.speed);
+                        this.actor.dx = m.x;
+                        this.actor.dy = m.y;
+                    } else {
+                        this.actor.dx = 0;
+                        this.actor.dy = 0;
+                    }
+
+                    if (this.isComplete(this.actor)) {
+                        // TODO this should never occur
+                        this.actor.x = this.end.x;
+                        this.actor.y = this.end.y;
+                        this.actor.dy = 0;
+                        this.actor.dx = 0;
+                    }
+                };
+
+                Follow.prototype.stop = function () {
+                    this.actor.dy = 0;
+                    this.actor.dx = 0;
+                    this._stopped = true;
+                };
+
+                Follow.prototype.isComplete = function (actor) {
+                    // the actor following should never stop unless specified to do so
+                    return this._stopped;
+                };
+
+                Follow.prototype.reset = function () {
+                    this._started = false;
+                };
+                return Follow;
+            })();
+            Actions.Follow = Follow;
+
+            var Meet = (function () {
+                function Meet(actor, actorToMeet, speed) {
+                    this._started = false;
+                    this._stopped = false;
+                    this._speedWasSpecified = false;
+                    this.actor = actor;
+                    this.actorToMeet = actorToMeet;
+                    this.current = new ex.Vector(this.actor.x, this.actor.y);
+                    this.end = new ex.Vector(actorToMeet.x, actorToMeet.y);
+                    this.speed = speed || 0;
+
+                    if (speed != undefined) {
+                        this._speedWasSpecified = true;
+                    }
+                }
+                Meet.prototype.update = function (delta) {
+                    if (!this._started) {
+                        this._started = true;
+                        this.distanceBetween = this.current.distance(this.end);
+                        this.dir = this.end.minus(this.current).normalize();
+                    }
+
+                    var actorToMeetSpeed = Math.sqrt(Math.pow(this.actorToMeet.dx, 2) + Math.pow(this.actorToMeet.dy, 2));
+                    if ((actorToMeetSpeed != 0) && (!this._speedWasSpecified)) {
+                        this.speed = actorToMeetSpeed;
+                    }
+                    this.current.x = this.actor.x;
+                    this.current.y = this.actor.y;
+
+                    this.end.x = this.actorToMeet.x;
+                    this.end.y = this.actorToMeet.y;
+                    this.distanceBetween = this.current.distance(this.end);
+                    this.dir = this.end.minus(this.current).normalize();
+
+                    var m = this.dir.scale(this.speed);
+                    this.actor.dx = m.x;
+                    this.actor.dy = m.y;
+
+                    if (this.isComplete(this.actor)) {
+                        // console.log("meeting is complete")
+                        this.actor.x = this.end.x;
+                        this.actor.y = this.end.y;
+                        this.actor.dy = 0;
+                        this.actor.dx = 0;
+                    }
+                };
+
+                Meet.prototype.isComplete = function (actor) {
+                    return this._stopped || (this.distanceBetween <= 1);
+                };
+
+                Meet.prototype.stop = function () {
+                    this.actor.dy = 0;
+                    this.actor.dx = 0;
+                    this._stopped = true;
+                };
+
+                Meet.prototype.reset = function () {
+                    this._started = false;
+                };
+                return Meet;
+            })();
+            Actions.Meet = Meet;
+
+            var RotateTo = (function () {
+                function RotateTo(actor, angleRadians, speed) {
+                    this._started = false;
+                    this._stopped = false;
+                    this.actor = actor;
+                    this.end = angleRadians;
+                    this.speed = speed;
+                }
+                RotateTo.prototype.update = function (delta) {
+                    if (!this._started) {
+                        this._started = true;
+                        this.start = this.actor.rotation;
+                        this.distance = Math.abs(this.end - this.start);
+                    }
+                    this.actor.rx = this.speed;
+
+                    //Logger.getInstance().log("Pos x: " + this.actor.x +"  y:" + this.actor.y, Log.DEBUG);
+                    if (this.isComplete(this.actor)) {
+                        this.actor.rotation = this.end;
+                        this.actor.rx = 0;
+                    }
+                };
+
+                RotateTo.prototype.isComplete = function (actor) {
+                    return this._stopped || (Math.abs(this.actor.rotation - this.start) >= this.distance);
+                };
+
+                RotateTo.prototype.stop = function () {
+                    this.actor.rx = 0;
+                    this._stopped = true;
+                };
+
+                RotateTo.prototype.reset = function () {
+                    this._started = false;
+                };
+                return RotateTo;
+            })();
+            Actions.RotateTo = RotateTo;
+
+            var RotateBy = (function () {
+                function RotateBy(actor, angleRadians, time) {
+                    this._started = false;
+                    this._stopped = false;
+                    this.actor = actor;
+                    this.end = angleRadians;
+                    this.time = time;
+                    this.speed = (this.end - this.actor.rotation) / time * 1000;
+                }
+                RotateBy.prototype.update = function (delta) {
+                    if (!this._started) {
+                        this._started = true;
+                        this.start = this.actor.rotation;
+                        this.distance = Math.abs(this.end - this.start);
+                    }
+                    this.actor.rx = this.speed;
+
+                    //Logger.getInstance().log("Pos x: " + this.actor.x +"  y:" + this.actor.y, Log.DEBUG);
+                    if (this.isComplete(this.actor)) {
+                        this.actor.rotation = this.end;
+                        this.actor.rx = 0;
+                    }
+                };
+
+                RotateBy.prototype.isComplete = function (actor) {
+                    return this._stopped || (Math.abs(this.actor.rotation - this.start) >= this.distance);
+                };
+
+                RotateBy.prototype.stop = function () {
+                    this.actor.rx = 0;
+                    this._stopped = true;
+                };
+
+                RotateBy.prototype.reset = function () {
+                    this._started = false;
+                };
+                return RotateBy;
+            })();
+            Actions.RotateBy = RotateBy;
+
+            var ScaleTo = (function () {
+                function ScaleTo(actor, scaleX, scaleY, speedX, speedY) {
+                    this._started = false;
+                    this._stopped = false;
+                    this.actor = actor;
+                    this.endX = scaleX;
+                    this.endY = scaleY;
+                    this.speedX = speedX;
+                    this.speedY = speedY;
+                }
+                ScaleTo.prototype.update = function (delta) {
+                    if (!this._started) {
+                        this._started = true;
+                        this.startX = this.actor.scaleX;
+                        this.startY = this.actor.scaleY;
+                        this.distanceX = Math.abs(this.endX - this.startX);
+                        this.distanceY = Math.abs(this.endY - this.startY);
+                    }
+
+                    if (!(Math.abs(this.actor.scaleX - this.startX) >= this.distanceX)) {
+                        var directionX = this.endY < this.startY ? -1 : 1;
+                        this.actor.sx = this.speedX * directionX;
+                    } else {
+                        this.actor.sx = 0;
+                    }
+
+                    if (!(Math.abs(this.actor.scaleY - this.startY) >= this.distanceY)) {
+                        var directionY = this.endY < this.startY ? -1 : 1;
+                        this.actor.sy = this.speedY * directionY;
+                    } else {
+                        this.actor.sy = 0;
+                    }
+
+                    //Logger.getInstance().log("Pos x: " + this.actor.x +"  y:" + this.actor.y, Log.DEBUG);
+                    if (this.isComplete(this.actor)) {
+                        this.actor.scaleX = this.endX;
+                        this.actor.scaleY = this.endY;
+                        this.actor.sx = 0;
+                        this.actor.sy = 0;
+                    }
+                };
+
+                ScaleTo.prototype.isComplete = function (actor) {
+                    return this._stopped || ((Math.abs(this.actor.scaleX - this.startX) >= this.distanceX) && (Math.abs(this.actor.scaleY - this.startY) >= this.distanceY));
+                };
+
+                ScaleTo.prototype.stop = function () {
+                    this.actor.sx = 0;
+                    this.actor.sy = 0;
+                    this._stopped = true;
+                };
+
+                ScaleTo.prototype.reset = function () {
+                    this._started = false;
+                };
+                return ScaleTo;
+            })();
+            Actions.ScaleTo = ScaleTo;
+
+            var ScaleBy = (function () {
+                function ScaleBy(actor, scaleX, scaleY, time) {
+                    this._started = false;
+                    this._stopped = false;
+                    this.actor = actor;
+                    this.endX = scaleX;
+                    this.endY = scaleY;
+                    this.time = time;
+                    this.speedX = (this.endX - this.actor.scaleX) / time * 1000;
+                    this.speedY = (this.endY - this.actor.scaleY) / time * 1000;
+                }
+                ScaleBy.prototype.update = function (delta) {
+                    if (!this._started) {
+                        this._started = true;
+                        this.startX = this.actor.scaleX;
+                        this.startY = this.actor.scaleY;
+                        this.distanceX = Math.abs(this.endX - this.startX);
+                        this.distanceY = Math.abs(this.endY - this.startY);
+                    }
+                    var directionX = this.endX < this.startX ? -1 : 1;
+                    var directionY = this.endY < this.startY ? -1 : 1;
+                    this.actor.sx = this.speedX * directionX;
+                    this.actor.sy = this.speedY * directionY;
+
+                    //Logger.getInstance().log("Pos x: " + this.actor.x +"  y:" + this.actor.y, Log.DEBUG);
+                    if (this.isComplete(this.actor)) {
+                        this.actor.scaleX = this.endX;
+                        this.actor.scaleY = this.endY;
+                        this.actor.sx = 0;
+                        this.actor.sy = 0;
+                    }
+                };
+
+                ScaleBy.prototype.isComplete = function (actor) {
+                    return this._stopped || ((Math.abs(this.actor.scaleX - this.startX) >= this.distanceX) && (Math.abs(this.actor.scaleY - this.startY) >= this.distanceY));
+                };
+
+                ScaleBy.prototype.stop = function () {
+                    this.actor.sx = 0;
+                    this.actor.sy = 0;
+                    this._stopped = true;
+                };
+
+                ScaleBy.prototype.reset = function () {
+                    this._started = false;
+                };
+                return ScaleBy;
+            })();
+            Actions.ScaleBy = ScaleBy;
+
+            var Delay = (function () {
+                function Delay(actor, delay) {
+                    this.elapsedTime = 0;
+                    this._started = false;
+                    this._stopped = false;
+                    this.actor = actor;
+                    this.delay = delay;
+                }
+                Delay.prototype.update = function (delta) {
+                    if (!this._started) {
+                        this._started = true;
+                    }
+
+                    this.x = this.actor.x;
+                    this.y = this.actor.y;
+
+                    this.elapsedTime += delta;
+                };
+
+                Delay.prototype.isComplete = function (actor) {
+                    return this._stopped || (this.elapsedTime >= this.delay);
+                };
+
+                Delay.prototype.stop = function () {
+                    this._stopped = true;
+                };
+
+                Delay.prototype.reset = function () {
+                    this.elapsedTime = 0;
+                    this._started = false;
+                };
+                return Delay;
+            })();
+            Actions.Delay = Delay;
+
+            var Blink = (function () {
+                function Blink(actor, frequency, duration, blinkTime) {
+                    this._started = false;
+                    this.nextBlink = 0;
+                    this.elapsedTime = 0;
+                    this.isBlinking = false;
+                    this._stopped = false;
+                    this.actor = actor;
+                    this.frequency = frequency;
+                    this.duration = duration;
+                    this.numBlinks = Math.floor(frequency * duration / 1000);
+                    this.blinkTime = blinkTime || 200;
+                }
+                Blink.prototype.update = function (delta) {
+                    if (!this._started) {
+                        this._started = true;
+                        this.nextBlink += this.duration / this.numBlinks / 2;
+                    }
+                    this.x = this.actor.x;
+                    this.y = this.actor.y;
+
+                    this.elapsedTime += delta;
+                    if ((this.elapsedTime + this.blinkTime / 2) > this.nextBlink && this.nextBlink > (this.elapsedTime - this.blinkTime / 2)) {
+                        this.isBlinking = true;
+                        this.actor.invisible = true;
+                    } else {
+                        if (this.isBlinking) {
+                            this.isBlinking = false;
+                            this.nextBlink += this.duration / this.numBlinks;
+                        }
+                        this.actor.invisible = false;
+                    }
+
+                    if (this.isComplete(this.actor)) {
+                        this.actor.invisible = false;
+                    }
+                };
+
+                Blink.prototype.isComplete = function (actor) {
+                    return this._stopped || (this.elapsedTime >= this.duration);
+                };
+
+                Blink.prototype.stop = function () {
+                    this.actor.invisible = false;
+                    this._stopped = true;
+                };
+
+                Blink.prototype.reset = function () {
+                    this._started = false;
+                    this.nextBlink = 0;
+                    this.elapsedTime = 0;
+                    this.isBlinking = false;
+                };
+                return Blink;
+            })();
+            Actions.Blink = Blink;
+
+            var Fade = (function () {
+                function Fade(actor, endOpacity, speed) {
+                    this.multiplyer = 1;
+                    this._started = false;
+                    this._stopped = false;
+                    this.actor = actor;
+                    this.endOpacity = endOpacity;
+                    this.speed = speed;
+                    if (endOpacity < actor.opacity) {
+                        this.multiplyer = -1;
+                    }
+                }
+                Fade.prototype.update = function (delta) {
+                    if (!this._started) {
+                        this._started = true;
+                    }
+                    if (this.speed > 0) {
+                        this.actor.opacity += this.multiplyer * (Math.abs(this.actor.opacity - this.endOpacity) * delta) / this.speed;
+                    }
+                    this.speed -= delta;
+
+                    ex.Logger.getInstance().debug("actor opacity: " + this.actor.opacity);
+                    if (this.isComplete(this.actor)) {
+                        this.actor.opacity = this.endOpacity;
+                    }
+                };
+
+                Fade.prototype.isComplete = function (actor) {
+                    return this._stopped || (Math.abs(this.actor.opacity - this.endOpacity) < 0.05);
+                };
+
+                Fade.prototype.stop = function () {
+                    this._stopped = true;
+                };
+
+                Fade.prototype.reset = function () {
+                    this._started = false;
+                };
+                return Fade;
+            })();
+            Actions.Fade = Fade;
+
+            var Die = (function () {
+                function Die(actor) {
+                    this._started = false;
+                    this._stopped = false;
+                    this.actor = actor;
+                }
+                Die.prototype.update = function (delta) {
+                    this.actor.actionQueue.clearActions();
+                    this.actor.kill();
+                    this._stopped = true;
+                };
+
+                Die.prototype.isComplete = function () {
+                    return this._stopped;
+                };
+
+                Die.prototype.stop = function () {
+                };
+
+                Die.prototype.reset = function () {
+                };
+                return Die;
+            })();
+            Actions.Die = Die;
+
+            var CallMethod = (function () {
+                function CallMethod(actor, method) {
+                    this._method = null;
+                    this._actor = null;
+                    this._hasBeenCalled = false;
+                    this._actor = actor;
+                    this._method = method;
+                }
+                CallMethod.prototype.update = function (delta) {
+                    this._method.call(this._actor);
+                    this._hasBeenCalled = true;
+                };
+                CallMethod.prototype.isComplete = function (actor) {
+                    return this._hasBeenCalled;
+                };
+                CallMethod.prototype.reset = function () {
+                    this._hasBeenCalled = false;
+                };
+                CallMethod.prototype.stop = function () {
+                    this._hasBeenCalled = true;
+                };
+                return CallMethod;
+            })();
+            Actions.CallMethod = CallMethod;
+
+            var Repeat = (function () {
+                function Repeat(actor, repeat, actions) {
+                    var _this = this;
+                    this._stopped = false;
+                    this.actor = actor;
+                    this.actionQueue = new ActionQueue(actor);
+                    this.repeat = repeat;
+                    this.originalRepeat = repeat;
+                    actions.forEach(function (action) {
+                        action.reset();
+                        _this.actionQueue.add(action);
+                    });
+                }
+                Repeat.prototype.update = function (delta) {
+                    this.x = this.actor.x;
+                    this.y = this.actor.y;
+                    if (!this.actionQueue.hasNext()) {
+                        this.actionQueue.reset();
+                        this.repeat--;
+                    }
+                    this.actionQueue.update(delta);
+                };
+
+                Repeat.prototype.isComplete = function () {
+                    return this._stopped || (this.repeat <= 0);
+                };
+
+                Repeat.prototype.stop = function () {
+                    this._stopped = true;
+                };
+
+                Repeat.prototype.reset = function () {
+                    this.repeat = this.originalRepeat;
+                };
+                return Repeat;
+            })();
+            Actions.Repeat = Repeat;
+
+            var RepeatForever = (function () {
+                function RepeatForever(actor, actions) {
+                    var _this = this;
+                    this._stopped = false;
+                    this.actor = actor;
+                    this.actionQueue = new ActionQueue(actor);
+                    actions.forEach(function (action) {
+                        action.reset();
+                        _this.actionQueue.add(action);
+                    });
+                }
+                RepeatForever.prototype.update = function (delta) {
+                    this.x = this.actor.x;
+                    this.y = this.actor.y;
+                    if (this._stopped) {
+                        return;
+                    }
+
+                    if (!this.actionQueue.hasNext()) {
+                        this.actionQueue.reset();
+                    }
+
+                    this.actionQueue.update(delta);
+                };
+
+                RepeatForever.prototype.isComplete = function () {
+                    return this._stopped;
+                };
+
+                RepeatForever.prototype.stop = function () {
+                    this._stopped = true;
+                    this.actionQueue.clearActions();
+                };
+
+                RepeatForever.prototype.reset = function () {
+                };
+                return RepeatForever;
+            })();
+            Actions.RepeatForever = RepeatForever;
+
+            var ActionQueue = (function () {
+                function ActionQueue(actor) {
+                    this._actions = [];
+                    this._completedActions = [];
+                    this.actor = actor;
+                }
+                ActionQueue.prototype.add = function (action) {
+                    this._actions.push(action);
+                };
+
+                ActionQueue.prototype.remove = function (action) {
+                    var index = this._actions.indexOf(action);
+                    this._actions.splice(index, 1);
+                };
+
+                ActionQueue.prototype.clearActions = function () {
+                    this._actions.length = 0;
+                    this._completedActions.length = 0;
+                    this._currentAction.stop();
+                };
+
+                ActionQueue.prototype.getActions = function () {
+                    return this._actions.concat(this._completedActions);
+                };
+
+                ActionQueue.prototype.hasNext = function () {
+                    return this._actions.length > 0;
+                };
+
+                ActionQueue.prototype.reset = function () {
+                    this._actions = this.getActions();
+                    this._actions.forEach(function (action) {
+                        action.reset();
+                    });
+                    this._completedActions = [];
+                };
+
+                ActionQueue.prototype.update = function (delta) {
+                    if (this._actions.length > 0) {
+                        this._currentAction = this._actions[0];
+                        this._currentAction.update(delta);
+
+                        if (this._currentAction.isComplete(this.actor)) {
+                            //Logger.getInstance().log("Action complete!", Log.DEBUG);
+                            this._completedActions.push(this._actions.shift());
+                        }
+                    }
+                };
+                return ActionQueue;
+            })();
+            Actions.ActionQueue = ActionQueue;
+        })(Internal.Actions || (Internal.Actions = {}));
+        var Actions = Internal.Actions;
+    })(ex.Internal || (ex.Internal = {}));
+    var Internal = ex.Internal;
 })(ex || (ex = {}));
 /// <reference path="Core.ts" />
 /// <reference path="Algebra.ts" />
@@ -5612,7 +6773,9 @@ var ex;
             var focus = this.getFocus();
             ctx.fillStyle = 'yellow';
             ctx.beginPath();
-            ctx.arc(this.follow.x + this.follow.getWidth() / 2, 0, 15, 0, Math.PI * 2);
+            if (this.follow) {
+                ctx.arc(this.follow.x + this.follow.getWidth() / 2, 0, 15, 0, Math.PI * 2);
+            }
             ctx.closePath();
             ctx.fill();
         };
@@ -6380,6 +7543,8 @@ var ex;
             this.total = 1;
             console.log("Powered by Excalibur.js visit", "http://excaliburjs.com", "for more information.");
 
+            this.camera = new ex.BaseCamera(this);
+
             this.logger = ex.Logger.getInstance();
 
             this.logger.debug("Building engine...");
@@ -7092,743 +8257,4 @@ var ex;
     ex.Engine = Engine;
     ;
 })(ex || (ex = {}));
-/// <reference path="Algebra.ts" />
-/// <reference path="Core.ts" />
-/// <reference path="Entities.ts" />
-var ex;
-(function (ex) {
-    (function (Internal) {
-        (function (Actions) {
-            var MoveTo = (function () {
-                function MoveTo(actor, destx, desty, speed) {
-                    this._started = false;
-                    this._stopped = false;
-                    this.actor = actor;
-                    this.end = new ex.Vector(destx, desty);
-                    this.speed = speed;
-                }
-                MoveTo.prototype.update = function (delta) {
-                    if (!this._started) {
-                        this._started = true;
-                        this.start = new ex.Vector(this.actor.x, this.actor.y);
-                        this.distance = this.start.distance(this.end);
-                        this.dir = this.end.minus(this.start).normalize();
-                    }
-                    var m = this.dir.scale(this.speed);
-                    this.actor.dx = m.x;
-                    this.actor.dy = m.y;
-
-                    //Logger.getInstance().log("Pos x: " + this.actor.x +"  y:" + this.actor.y, Log.DEBUG);
-                    if (this.isComplete(this.actor)) {
-                        this.actor.x = this.end.x;
-                        this.actor.y = this.end.y;
-                        this.actor.dy = 0;
-                        this.actor.dx = 0;
-                    }
-                };
-
-                MoveTo.prototype.isComplete = function (actor) {
-                    return this._stopped || (new ex.Vector(actor.x, actor.y)).distance(this.start) >= this.distance;
-                };
-
-                MoveTo.prototype.stop = function () {
-                    this.actor.dy = 0;
-                    this.actor.dx = 0;
-                    this._stopped = true;
-                };
-
-                MoveTo.prototype.reset = function () {
-                    this._started = false;
-                };
-                return MoveTo;
-            })();
-            Actions.MoveTo = MoveTo;
-
-            var MoveBy = (function () {
-                function MoveBy(actor, destx, desty, time) {
-                    this._started = false;
-                    this._stopped = false;
-                    this.actor = actor;
-                    this.end = new ex.Vector(destx, desty);
-                    if (time <= 0) {
-                        ex.Logger.getInstance().error("Attempted to moveBy time less than or equal to zero : " + time);
-                        throw new Error("Cannot move in time <= 0");
-                    }
-                    this.time = time;
-                }
-                MoveBy.prototype.update = function (delta) {
-                    if (!this._started) {
-                        this._started = true;
-                        this.start = new ex.Vector(this.actor.x, this.actor.y);
-                        this.distance = this.start.distance(this.end);
-                        this.dir = this.end.minus(this.start).normalize();
-                        this.speed = this.distance / (this.time / 1000);
-                    }
-
-                    var m = this.dir.scale(this.speed);
-                    this.actor.dx = m.x;
-                    this.actor.dy = m.y;
-
-                    //Logger.getInstance().log("Pos x: " + this.actor.x +"  y:" + this.actor.y, Log.DEBUG);
-                    if (this.isComplete(this.actor)) {
-                        this.actor.x = this.end.x;
-                        this.actor.y = this.end.y;
-                        this.actor.dy = 0;
-                        this.actor.dx = 0;
-                    }
-                };
-
-                MoveBy.prototype.isComplete = function (actor) {
-                    return this._stopped || (new ex.Vector(actor.x, actor.y)).distance(this.start) >= this.distance;
-                };
-
-                MoveBy.prototype.stop = function () {
-                    this.actor.dy = 0;
-                    this.actor.dx = 0;
-                    this._stopped = true;
-                };
-
-                MoveBy.prototype.reset = function () {
-                    this._started = false;
-                };
-                return MoveBy;
-            })();
-            Actions.MoveBy = MoveBy;
-
-            var Follow = (function () {
-                function Follow(actor, actorToFollow, followDistance) {
-                    this._started = false;
-                    this._stopped = false;
-                    this.actor = actor;
-                    this.actorToFollow = actorToFollow;
-                    this.current = new ex.Vector(this.actor.x, this.actor.y);
-                    this.end = new ex.Vector(actorToFollow.x, actorToFollow.y);
-                    this.maximumDistance = (followDistance != undefined) ? followDistance : this.current.distance(this.end);
-                    this.speed = 0;
-                }
-                Follow.prototype.update = function (delta) {
-                    if (!this._started) {
-                        this._started = true;
-                        this.distanceBetween = this.current.distance(this.end);
-                        this.dir = this.end.minus(this.current).normalize();
-                    }
-
-                    var actorToFollowSpeed = Math.sqrt(Math.pow(this.actorToFollow.dx, 2) + Math.pow(this.actorToFollow.dy, 2));
-                    if (actorToFollowSpeed != 0) {
-                        this.speed = actorToFollowSpeed;
-                    }
-                    this.current.x = this.actor.x;
-                    this.current.y = this.actor.y;
-
-                    this.end.x = this.actorToFollow.x;
-                    this.end.y = this.actorToFollow.y;
-                    this.distanceBetween = this.current.distance(this.end);
-                    this.dir = this.end.minus(this.current).normalize();
-
-                    if (this.distanceBetween >= this.maximumDistance) {
-                        var m = this.dir.scale(this.speed);
-                        this.actor.dx = m.x;
-                        this.actor.dy = m.y;
-                    } else {
-                        this.actor.dx = 0;
-                        this.actor.dy = 0;
-                    }
-
-                    if (this.isComplete(this.actor)) {
-                        // TODO this should never occur
-                        this.actor.x = this.end.x;
-                        this.actor.y = this.end.y;
-                        this.actor.dy = 0;
-                        this.actor.dx = 0;
-                    }
-                };
-
-                Follow.prototype.stop = function () {
-                    this.actor.dy = 0;
-                    this.actor.dx = 0;
-                    this._stopped = true;
-                };
-
-                Follow.prototype.isComplete = function (actor) {
-                    // the actor following should never stop unless specified to do so
-                    return this._stopped;
-                };
-
-                Follow.prototype.reset = function () {
-                    this._started = false;
-                };
-                return Follow;
-            })();
-            Actions.Follow = Follow;
-
-            var Meet = (function () {
-                function Meet(actor, actorToMeet, speed) {
-                    this._started = false;
-                    this._stopped = false;
-                    this._speedWasSpecified = false;
-                    this.actor = actor;
-                    this.actorToMeet = actorToMeet;
-                    this.current = new ex.Vector(this.actor.x, this.actor.y);
-                    this.end = new ex.Vector(actorToMeet.x, actorToMeet.y);
-                    this.speed = speed || 0;
-
-                    if (speed != undefined) {
-                        this._speedWasSpecified = true;
-                    }
-                }
-                Meet.prototype.update = function (delta) {
-                    if (!this._started) {
-                        this._started = true;
-                        this.distanceBetween = this.current.distance(this.end);
-                        this.dir = this.end.minus(this.current).normalize();
-                    }
-
-                    var actorToMeetSpeed = Math.sqrt(Math.pow(this.actorToMeet.dx, 2) + Math.pow(this.actorToMeet.dy, 2));
-                    if ((actorToMeetSpeed != 0) && (!this._speedWasSpecified)) {
-                        this.speed = actorToMeetSpeed;
-                    }
-                    this.current.x = this.actor.x;
-                    this.current.y = this.actor.y;
-
-                    this.end.x = this.actorToMeet.x;
-                    this.end.y = this.actorToMeet.y;
-                    this.distanceBetween = this.current.distance(this.end);
-                    this.dir = this.end.minus(this.current).normalize();
-
-                    var m = this.dir.scale(this.speed);
-                    this.actor.dx = m.x;
-                    this.actor.dy = m.y;
-
-                    if (this.isComplete(this.actor)) {
-                        // console.log("meeting is complete")
-                        this.actor.x = this.end.x;
-                        this.actor.y = this.end.y;
-                        this.actor.dy = 0;
-                        this.actor.dx = 0;
-                    }
-                };
-
-                Meet.prototype.isComplete = function (actor) {
-                    return this._stopped || (this.distanceBetween <= 1);
-                };
-
-                Meet.prototype.stop = function () {
-                    this.actor.dy = 0;
-                    this.actor.dx = 0;
-                    this._stopped = true;
-                };
-
-                Meet.prototype.reset = function () {
-                    this._started = false;
-                };
-                return Meet;
-            })();
-            Actions.Meet = Meet;
-
-            var RotateTo = (function () {
-                function RotateTo(actor, angleRadians, speed) {
-                    this._started = false;
-                    this._stopped = false;
-                    this.actor = actor;
-                    this.end = angleRadians;
-                    this.speed = speed;
-                }
-                RotateTo.prototype.update = function (delta) {
-                    if (!this._started) {
-                        this._started = true;
-                        this.start = this.actor.rotation;
-                        this.distance = Math.abs(this.end - this.start);
-                    }
-                    this.actor.rx = this.speed;
-
-                    //Logger.getInstance().log("Pos x: " + this.actor.x +"  y:" + this.actor.y, Log.DEBUG);
-                    if (this.isComplete(this.actor)) {
-                        this.actor.rotation = this.end;
-                        this.actor.rx = 0;
-                    }
-                };
-
-                RotateTo.prototype.isComplete = function (actor) {
-                    return this._stopped || (Math.abs(this.actor.rotation - this.start) >= this.distance);
-                };
-
-                RotateTo.prototype.stop = function () {
-                    this.actor.rx = 0;
-                    this._stopped = true;
-                };
-
-                RotateTo.prototype.reset = function () {
-                    this._started = false;
-                };
-                return RotateTo;
-            })();
-            Actions.RotateTo = RotateTo;
-
-            var RotateBy = (function () {
-                function RotateBy(actor, angleRadians, time) {
-                    this._started = false;
-                    this._stopped = false;
-                    this.actor = actor;
-                    this.end = angleRadians;
-                    this.time = time;
-                    this.speed = (this.end - this.actor.rotation) / time * 1000;
-                }
-                RotateBy.prototype.update = function (delta) {
-                    if (!this._started) {
-                        this._started = true;
-                        this.start = this.actor.rotation;
-                        this.distance = Math.abs(this.end - this.start);
-                    }
-                    this.actor.rx = this.speed;
-
-                    //Logger.getInstance().log("Pos x: " + this.actor.x +"  y:" + this.actor.y, Log.DEBUG);
-                    if (this.isComplete(this.actor)) {
-                        this.actor.rotation = this.end;
-                        this.actor.rx = 0;
-                    }
-                };
-
-                RotateBy.prototype.isComplete = function (actor) {
-                    return this._stopped || (Math.abs(this.actor.rotation - this.start) >= this.distance);
-                };
-
-                RotateBy.prototype.stop = function () {
-                    this.actor.rx = 0;
-                    this._stopped = true;
-                };
-
-                RotateBy.prototype.reset = function () {
-                    this._started = false;
-                };
-                return RotateBy;
-            })();
-            Actions.RotateBy = RotateBy;
-
-            var ScaleTo = (function () {
-                function ScaleTo(actor, scaleX, scaleY, speedX, speedY) {
-                    this._started = false;
-                    this._stopped = false;
-                    this.actor = actor;
-                    this.endX = scaleX;
-                    this.endY = scaleY;
-                    this.speedX = speedX;
-                    this.speedY = speedY;
-                }
-                ScaleTo.prototype.update = function (delta) {
-                    if (!this._started) {
-                        this._started = true;
-                        this.startX = this.actor.scaleX;
-                        this.startY = this.actor.scaleY;
-                        this.distanceX = Math.abs(this.endX - this.startX);
-                        this.distanceY = Math.abs(this.endY - this.startY);
-                    }
-
-                    if (!(Math.abs(this.actor.scaleX - this.startX) >= this.distanceX)) {
-                        var directionX = this.endY < this.startY ? -1 : 1;
-                        this.actor.sx = this.speedX * directionX;
-                    } else {
-                        this.actor.sx = 0;
-                    }
-
-                    if (!(Math.abs(this.actor.scaleY - this.startY) >= this.distanceY)) {
-                        var directionY = this.endY < this.startY ? -1 : 1;
-                        this.actor.sy = this.speedY * directionY;
-                    } else {
-                        this.actor.sy = 0;
-                    }
-
-                    //Logger.getInstance().log("Pos x: " + this.actor.x +"  y:" + this.actor.y, Log.DEBUG);
-                    if (this.isComplete(this.actor)) {
-                        this.actor.scaleX = this.endX;
-                        this.actor.scaleY = this.endY;
-                        this.actor.sx = 0;
-                        this.actor.sy = 0;
-                    }
-                };
-
-                ScaleTo.prototype.isComplete = function (actor) {
-                    return this._stopped || ((Math.abs(this.actor.scaleX - this.startX) >= this.distanceX) && (Math.abs(this.actor.scaleY - this.startY) >= this.distanceY));
-                };
-
-                ScaleTo.prototype.stop = function () {
-                    this.actor.sx = 0;
-                    this.actor.sy = 0;
-                    this._stopped = true;
-                };
-
-                ScaleTo.prototype.reset = function () {
-                    this._started = false;
-                };
-                return ScaleTo;
-            })();
-            Actions.ScaleTo = ScaleTo;
-
-            var ScaleBy = (function () {
-                function ScaleBy(actor, scaleX, scaleY, time) {
-                    this._started = false;
-                    this._stopped = false;
-                    this.actor = actor;
-                    this.endX = scaleX;
-                    this.endY = scaleY;
-                    this.time = time;
-                    this.speedX = (this.endX - this.actor.scaleX) / time * 1000;
-                    this.speedY = (this.endY - this.actor.scaleY) / time * 1000;
-                }
-                ScaleBy.prototype.update = function (delta) {
-                    if (!this._started) {
-                        this._started = true;
-                        this.startX = this.actor.scaleX;
-                        this.startY = this.actor.scaleY;
-                        this.distanceX = Math.abs(this.endX - this.startX);
-                        this.distanceY = Math.abs(this.endY - this.startY);
-                    }
-                    var directionX = this.endX < this.startX ? -1 : 1;
-                    var directionY = this.endY < this.startY ? -1 : 1;
-                    this.actor.sx = this.speedX * directionX;
-                    this.actor.sy = this.speedY * directionY;
-
-                    //Logger.getInstance().log("Pos x: " + this.actor.x +"  y:" + this.actor.y, Log.DEBUG);
-                    if (this.isComplete(this.actor)) {
-                        this.actor.scaleX = this.endX;
-                        this.actor.scaleY = this.endY;
-                        this.actor.sx = 0;
-                        this.actor.sy = 0;
-                    }
-                };
-
-                ScaleBy.prototype.isComplete = function (actor) {
-                    return this._stopped || ((Math.abs(this.actor.scaleX - this.startX) >= this.distanceX) && (Math.abs(this.actor.scaleY - this.startY) >= this.distanceY));
-                };
-
-                ScaleBy.prototype.stop = function () {
-                    this.actor.sx = 0;
-                    this.actor.sy = 0;
-                    this._stopped = true;
-                };
-
-                ScaleBy.prototype.reset = function () {
-                    this._started = false;
-                };
-                return ScaleBy;
-            })();
-            Actions.ScaleBy = ScaleBy;
-
-            var Delay = (function () {
-                function Delay(actor, delay) {
-                    this.elapsedTime = 0;
-                    this._started = false;
-                    this._stopped = false;
-                    this.actor = actor;
-                    this.delay = delay;
-                }
-                Delay.prototype.update = function (delta) {
-                    if (!this._started) {
-                        this._started = true;
-                    }
-
-                    this.x = this.actor.x;
-                    this.y = this.actor.y;
-
-                    this.elapsedTime += delta;
-                };
-
-                Delay.prototype.isComplete = function (actor) {
-                    return this._stopped || (this.elapsedTime >= this.delay);
-                };
-
-                Delay.prototype.stop = function () {
-                    this._stopped = true;
-                };
-
-                Delay.prototype.reset = function () {
-                    this.elapsedTime = 0;
-                    this._started = false;
-                };
-                return Delay;
-            })();
-            Actions.Delay = Delay;
-
-            var Blink = (function () {
-                function Blink(actor, frequency, duration, blinkTime) {
-                    this._started = false;
-                    this.nextBlink = 0;
-                    this.elapsedTime = 0;
-                    this.isBlinking = false;
-                    this._stopped = false;
-                    this.actor = actor;
-                    this.frequency = frequency;
-                    this.duration = duration;
-                    this.numBlinks = Math.floor(frequency * duration / 1000);
-                    this.blinkTime = blinkTime || 200;
-                }
-                Blink.prototype.update = function (delta) {
-                    if (!this._started) {
-                        this._started = true;
-                        this.nextBlink += this.duration / this.numBlinks / 2;
-                    }
-                    this.x = this.actor.x;
-                    this.y = this.actor.y;
-
-                    this.elapsedTime += delta;
-                    if ((this.elapsedTime + this.blinkTime / 2) > this.nextBlink && this.nextBlink > (this.elapsedTime - this.blinkTime / 2)) {
-                        this.isBlinking = true;
-                        this.actor.invisible = true;
-                    } else {
-                        if (this.isBlinking) {
-                            this.isBlinking = false;
-                            this.nextBlink += this.duration / this.numBlinks;
-                        }
-                        this.actor.invisible = false;
-                    }
-
-                    if (this.isComplete(this.actor)) {
-                        this.actor.invisible = false;
-                    }
-                };
-
-                Blink.prototype.isComplete = function (actor) {
-                    return this._stopped || (this.elapsedTime >= this.duration);
-                };
-
-                Blink.prototype.stop = function () {
-                    this.actor.invisible = false;
-                    this._stopped = true;
-                };
-
-                Blink.prototype.reset = function () {
-                    this._started = false;
-                    this.nextBlink = 0;
-                    this.elapsedTime = 0;
-                    this.isBlinking = false;
-                };
-                return Blink;
-            })();
-            Actions.Blink = Blink;
-
-            var Fade = (function () {
-                function Fade(actor, endOpacity, speed) {
-                    this.multiplyer = 1;
-                    this._started = false;
-                    this._stopped = false;
-                    this.actor = actor;
-                    this.endOpacity = endOpacity;
-                    this.speed = speed;
-                    if (endOpacity < actor.opacity) {
-                        this.multiplyer = -1;
-                    }
-                }
-                Fade.prototype.update = function (delta) {
-                    if (!this._started) {
-                        this._started = true;
-                    }
-                    if (this.speed > 0) {
-                        this.actor.opacity += this.multiplyer * (Math.abs(this.actor.opacity - this.endOpacity) * delta) / this.speed;
-                    }
-                    this.speed -= delta;
-
-                    ex.Logger.getInstance().debug("actor opacity: " + this.actor.opacity);
-                    if (this.isComplete(this.actor)) {
-                        this.actor.opacity = this.endOpacity;
-                    }
-                };
-
-                Fade.prototype.isComplete = function (actor) {
-                    return this._stopped || (Math.abs(this.actor.opacity - this.endOpacity) < 0.05);
-                };
-
-                Fade.prototype.stop = function () {
-                    this._stopped = true;
-                };
-
-                Fade.prototype.reset = function () {
-                    this._started = false;
-                };
-                return Fade;
-            })();
-            Actions.Fade = Fade;
-
-            var Die = (function () {
-                function Die(actor) {
-                    this._started = false;
-                    this._stopped = false;
-                    this.actor = actor;
-                }
-                Die.prototype.update = function (delta) {
-                    this.actor.actionQueue.clearActions();
-                    this.actor.kill();
-                    this._stopped = true;
-                };
-
-                Die.prototype.isComplete = function () {
-                    return this._stopped;
-                };
-
-                Die.prototype.stop = function () {
-                };
-
-                Die.prototype.reset = function () {
-                };
-                return Die;
-            })();
-            Actions.Die = Die;
-
-            var CallMethod = (function () {
-                function CallMethod(actor, method) {
-                    this._method = null;
-                    this._actor = null;
-                    this._hasBeenCalled = false;
-                    this._actor = actor;
-                    this._method = method;
-                }
-                CallMethod.prototype.update = function (delta) {
-                    this._method.call(this._actor);
-                    this._hasBeenCalled = true;
-                };
-                CallMethod.prototype.isComplete = function (actor) {
-                    return this._hasBeenCalled;
-                };
-                CallMethod.prototype.reset = function () {
-                    this._hasBeenCalled = false;
-                };
-                CallMethod.prototype.stop = function () {
-                    this._hasBeenCalled = true;
-                };
-                return CallMethod;
-            })();
-            Actions.CallMethod = CallMethod;
-
-            var Repeat = (function () {
-                function Repeat(actor, repeat, actions) {
-                    var _this = this;
-                    this._stopped = false;
-                    this.actor = actor;
-                    this.actionQueue = new ActionQueue(actor);
-                    this.repeat = repeat;
-                    this.originalRepeat = repeat;
-                    actions.forEach(function (action) {
-                        action.reset();
-                        _this.actionQueue.add(action);
-                    });
-                }
-                Repeat.prototype.update = function (delta) {
-                    this.x = this.actor.x;
-                    this.y = this.actor.y;
-                    if (!this.actionQueue.hasNext()) {
-                        this.actionQueue.reset();
-                        this.repeat--;
-                    }
-                    this.actionQueue.update(delta);
-                };
-
-                Repeat.prototype.isComplete = function () {
-                    return this._stopped || (this.repeat <= 0);
-                };
-
-                Repeat.prototype.stop = function () {
-                    this._stopped = true;
-                };
-
-                Repeat.prototype.reset = function () {
-                    this.repeat = this.originalRepeat;
-                };
-                return Repeat;
-            })();
-            Actions.Repeat = Repeat;
-
-            var RepeatForever = (function () {
-                function RepeatForever(actor, actions) {
-                    var _this = this;
-                    this._stopped = false;
-                    this.actor = actor;
-                    this.actionQueue = new ActionQueue(actor);
-                    actions.forEach(function (action) {
-                        action.reset();
-                        _this.actionQueue.add(action);
-                    });
-                }
-                RepeatForever.prototype.update = function (delta) {
-                    this.x = this.actor.x;
-                    this.y = this.actor.y;
-                    if (this._stopped) {
-                        return;
-                    }
-
-                    if (!this.actionQueue.hasNext()) {
-                        this.actionQueue.reset();
-                    }
-
-                    this.actionQueue.update(delta);
-                };
-
-                RepeatForever.prototype.isComplete = function () {
-                    return this._stopped;
-                };
-
-                RepeatForever.prototype.stop = function () {
-                    this._stopped = true;
-                    this.actionQueue.clearActions();
-                };
-
-                RepeatForever.prototype.reset = function () {
-                };
-                return RepeatForever;
-            })();
-            Actions.RepeatForever = RepeatForever;
-
-            var ActionQueue = (function () {
-                function ActionQueue(actor) {
-                    this._actions = [];
-                    this._completedActions = [];
-                    this.actor = actor;
-                }
-                ActionQueue.prototype.add = function (action) {
-                    this._actions.push(action);
-                };
-
-                ActionQueue.prototype.remove = function (action) {
-                    var index = this._actions.indexOf(action);
-                    this._actions.splice(index, 1);
-                };
-
-                ActionQueue.prototype.clearActions = function () {
-                    this._actions.length = 0;
-                    this._completedActions.length = 0;
-                    this._currentAction.stop();
-                };
-
-                ActionQueue.prototype.getActions = function () {
-                    return this._actions.concat(this._completedActions);
-                };
-
-                ActionQueue.prototype.hasNext = function () {
-                    return this._actions.length > 0;
-                };
-
-                ActionQueue.prototype.reset = function () {
-                    this._actions = this.getActions();
-                    this._actions.forEach(function (action) {
-                        action.reset();
-                    });
-                    this._completedActions = [];
-                };
-
-                ActionQueue.prototype.update = function (delta) {
-                    if (this._actions.length > 0) {
-                        this._currentAction = this._actions[0];
-                        this._currentAction.update(delta);
-
-                        if (this._currentAction.isComplete(this.actor)) {
-                            //Logger.getInstance().log("Action complete!", Log.DEBUG);
-                            this._completedActions.push(this._actions.shift());
-                        }
-                    }
-                };
-                return ActionQueue;
-            })();
-            Actions.ActionQueue = ActionQueue;
-        })(Internal.Actions || (Internal.Actions = {}));
-        var Actions = Internal.Actions;
-    })(ex.Internal || (ex.Internal = {}));
-    var Internal = ex.Internal;
-})(ex || (ex = {}));
-//# sourceMappingURL=Excalibur.js.map
+//# sourceMappingURL=excalibur-0.2.2.js.map

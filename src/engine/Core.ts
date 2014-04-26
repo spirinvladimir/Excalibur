@@ -582,6 +582,8 @@ module ex {
          super();
          console.log("Powered by Excalibur.js visit","http://excaliburjs.com","for more information.");
          
+         this.camera = new BaseCamera(this);
+
          this.logger = Logger.getInstance();
          
          this.logger.debug("Building engine...");

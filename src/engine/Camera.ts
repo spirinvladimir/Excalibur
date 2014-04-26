@@ -177,7 +177,9 @@ module ex {
          var focus = this.getFocus();
          ctx.fillStyle = 'yellow';
          ctx.beginPath();
-         ctx.arc(this.follow.x + this.follow.getWidth()/2, 0, 15, 0, Math.PI*2);
+         if(this.follow){
+            ctx.arc(this.follow.x + this.follow.getWidth()/2, 0, 15, 0, Math.PI*2);
+         }
          ctx.closePath();
          ctx.fill();
       }

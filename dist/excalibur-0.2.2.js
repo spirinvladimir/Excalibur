@@ -1,4 +1,4 @@
-/*! excalibur - v0.2.2 - 2014-04-15
+/*! excalibur - v0.2.2 - 2014-04-26
 * https://github.com/excaliburjs/Excalibur
 * Copyright (c) 2014 ; Licensed BSD*/
 if (typeof window == 'undefined') {
@@ -59,6 +59,47 @@ var ex;
             this.x = x;
             this.y = y;
         }
+        /**
+        * X Coordinate of the point
+        * @property x {number}
+        */
+        /**
+        * Y Coordinate of the point
+        * @property y {number}
+        */
+        /**
+        * Convert this point to a vector
+        * @method toVector
+        * @returns Vector
+        */
+        Point.prototype.toVector = function () {
+            return new Vector(this.x, this.y);
+        };
+
+        /**
+        * Rotates the current point around another by a certain number of
+        * degrees in radians
+        * @method rotate
+        * @returns Point
+        */
+        Point.prototype.rotate = function (angle, anchor) {
+            if (!anchor) {
+                anchor = new ex.Point(0, 0);
+            }
+            var x = (this.x - anchor.x) * Math.cos(angle) + anchor.x;
+            var y = (this.y - anchor.y) * Math.sin(angle) + anchor.y;
+
+            return new Point(x, y);
+        };
+
+        /**
+        * Translates the current point by a vector
+        * @method add
+        * @returns Point
+        */
+        Point.prototype.add = function (vector) {
+            return new Point(this.x + vector.x, this.y + vector.y);
+        };
         return Point;
     })();
     ex.Point = Point;
@@ -78,6 +119,17 @@ var ex;
             this.x = x;
             this.y = y;
         }
+        /**
+        * Returns a vector of unit length in the direction of the specified angle.
+        * @method fromAngle
+        * @static
+        * @param angle {number} The angle to generate the vector
+        * @returns Vector
+        */
+        Vector.fromAngle = function (angle) {
+            return new Vector(Math.cos(angle), Math.sin(angle));
+        };
+
         /**
         * The distance to another vector
         * @method distance
@@ -154,9 +206,173 @@ var ex;
         Vector.prototype.cross = function (v) {
             return this.x * v.y - this.y * v.x;
         };
+
+        /**
+        * Returns the perpendicular vector to this one
+        * @method perpendicular
+        * @return Vector
+        */
+        Vector.prototype.perpendicular = function () {
+            return new Vector(this.y, -this.x);
+        };
+
+        /**
+        * Returns the normal vector to this one
+        * @method normal
+        * @return Vector
+        */
+        Vector.prototype.normal = function () {
+            return this.perpendicular().normalize();
+        };
+
+        /**
+        * Returns the angle of this vector.
+        * @method toAngle
+        * @returns number
+        */
+        Vector.prototype.toAngle = function () {
+            return Math.atan2(this.y, this.x);
+        };
+
+        /**
+        * Returns the point represention of this vector
+        * @method toPoint
+        * @returns Point
+        */
+        Vector.prototype.toPoint = function () {
+            return new Point(this.x, this.y);
+        };
+
+        /**
+        * Rotates the current vector around a point by a certain number of
+        * degrees in radians
+        * @method rotate
+        * @returns Vector
+        */
+        Vector.prototype.rotate = function (angle, anchor) {
+            return _super.prototype.rotate.call(this, angle, anchor).toVector();
+        };
         return Vector;
     })(Point);
     ex.Vector = Vector;
+
+    /**
+    * A 2D ray that can be cast into the scene to do collision detection
+    * @class Ray
+    * @constructor
+    * @param pos {Point} The starting position for the ray
+    * @param dir {Vector} The vector indicating the direction of the ray
+    */
+    var Ray = (function () {
+        function Ray(pos, dir) {
+            this.pos = pos;
+            this.dir = dir.normalize();
+        }
+        /**
+        * Tests a whether this ray intersects with a line segment. Returns a number greater than or equal to 0 on success.
+        * This number indicates the mathematical intersection time.
+        * @method intersect
+        * @param line {Line} The line to test
+        * @returns number
+        */
+        Ray.prototype.intersect = function (line) {
+            // Test if the ray starts on the line
+            if (this.pos.y === (line.getSlope().y / line.getSlope().x) * this.pos.x + line.begin.y) {
+                return 0;
+            }
+
+            var numerator = line.begin.toVector().minus(this.pos.toVector());
+
+            // Test is line and ray are parallel and non intersecting
+            if (this.dir.cross(line.getSlope()) === 0 && numerator.cross(this.dir) !== 0) {
+                return -1;
+            }
+
+            var divisor = (this.dir.cross(line.getSlope()));
+            if (divisor === 0) {
+                return -1;
+            }
+
+            var t = numerator.cross(line.getSlope()) / divisor;
+
+            if (t >= 0) {
+                var u = (numerator.cross(this.dir) / divisor) / line.getLength();
+                if (u >= 0 && u <= 1) {
+                    return t;
+                }
+            }
+            return -1;
+        };
+
+        /**
+        * Returns the point of intersection given the intersection time
+        * @method getPoint
+        * @returns Point
+        */
+        Ray.prototype.getPoint = function (time) {
+            return this.pos.toVector().add(this.dir.scale(time)).toPoint();
+        };
+        return Ray;
+    })();
+    ex.Ray = Ray;
+
+    /**
+    * A 2D line segment
+    * @class Line
+    * @constructor
+    * @param begin {Point} The starting point of the line segment
+    * @param end {Point} The ending point of the line segment
+    */
+    var Line = (function () {
+        function Line(begin, end) {
+            this.begin = begin;
+            this.end = end;
+        }
+        /**
+        * Returns the slope of the line in the form of a vector
+        * @method getSlope
+        * @returns Vector
+        */
+        Line.prototype.getSlope = function () {
+            var begin = this.begin.toVector();
+            var end = this.end.toVector();
+            var distance = begin.distance(end);
+            return end.minus(begin).scale(1 / distance);
+        };
+
+        /**
+        * Returns the length of the line segment in pixels
+        * @method getLength
+        * @returns number
+        */
+        Line.prototype.getLength = function () {
+            var begin = this.begin.toVector();
+            var end = this.end.toVector();
+            var distance = begin.distance(end);
+            return distance;
+        };
+        return Line;
+    })();
+    ex.Line = Line;
+
+    var Projection = (function () {
+        function Projection(min, max) {
+            this.min = min;
+            this.max = max;
+        }
+        Projection.prototype.overlaps = function (projection) {
+            return this.max > projection.min && projection.max > this.min;
+        };
+
+        Projection.prototype.getOverlap = function (projection) {
+            if (this.overlaps(projection)) {
+                return Math.min(this.max - projection.min, projection.max - this.min);
+            }
+            return 0;
+        };
+        return Projection;
+    })();
+    ex.Projection = Projection;
 })(ex || (ex = {}));
 var ex;
 (function (ex) {
@@ -1271,6 +1487,20 @@ var ex;
         }
         Util.getPosition = getPosition;
 
+        function getOppositeSide(side) {
+            if (side === 1 /* Top */)
+                return 2 /* Bottom */;
+            if (side === 2 /* Bottom */)
+                return 1 /* Top */;
+            if (side === 3 /* Left */)
+                return 4 /* Right */;
+            if (side === 4 /* Right */)
+                return 3 /* Left */;
+
+            return 0 /* None */;
+        }
+        Util.getOppositeSide = getOppositeSide;
+
         /**
         * Excaliburs dynamically resizing collection
         * @class Collection
@@ -1513,6 +1743,7 @@ var ex;
     * The CollisionMap object provides a lightweight way to do large complex scenes with collision
     * without the overhead of actors.
     * @class CollisionMap
+    * @constructor
     * @param x {number} The x coordinate to anchor the collision map's upper left corner (should not be changed once set)
     * @param y {number} The y coordinate to anchor the collision map's upper left corner (should not be changed once set)
     * @param cellWidth {number} The individual width of each cell (in pixels) (should not be changed once set)
@@ -1752,6 +1983,12 @@ var ex;
 /// <reference path="Algebra.ts" />
 var ex;
 (function (ex) {
+    (function (CollisionStrategy) {
+        CollisionStrategy[CollisionStrategy["AxisAligned"] = 0] = "AxisAligned";
+        CollisionStrategy[CollisionStrategy["SeparatingAxis"] = 1] = "SeparatingAxis";
+    })(ex.CollisionStrategy || (ex.CollisionStrategy = {}));
+    var CollisionStrategy = ex.CollisionStrategy;
+
     
 
     /**
@@ -1795,7 +2032,7 @@ var ex;
         * @returns boolean
         */
         BoundingBox.prototype.contains = function (p) {
-            return (this.left <= p.x && this.top <= p.y && this.bottom >= p.y && this.right >= p.x);
+            return (this.left < p.x && this.top < p.y && this.bottom > p.y && this.right > p.x);
         };
 
         /**
@@ -1838,6 +2075,129 @@ var ex;
         return BoundingBox;
     })();
     ex.BoundingBox = BoundingBox;
+
+    var SATBoundingBox = (function () {
+        function SATBoundingBox(points) {
+            this._points = points.map(function (p) {
+                return p.toVector();
+            });
+        }
+        SATBoundingBox.prototype.getSides = function () {
+            var lines = [];
+            var len = this._points.length;
+            for (var i = 0; i < len; i++) {
+                lines.push(new ex.Line(this._points[i], this._points[(i + 1) % len]));
+            }
+            return lines;
+        };
+
+        SATBoundingBox.prototype.getAxes = function () {
+            var axes = [];
+            var len = this._points.length;
+            for (var i = 0; i < len; i++) {
+                axes.push(this._points[i].minus(this._points[(i + 1) % len]).normal());
+            }
+            return axes;
+        };
+
+        SATBoundingBox.prototype.project = function (axis) {
+            var scalars = [];
+
+            var len = this._points.length;
+            for (var i = 0; i < len; i++) {
+                scalars.push(this._points[i].dot(axis));
+            }
+
+            return new ex.Projection(Math.min.apply(Math, scalars), Math.max.apply(Math, scalars));
+        };
+
+        /**
+        * Returns the calculated width of the bounding box, by generating an axis aligned box around the current
+        * @method getWidth
+        * @returns number
+        */
+        SATBoundingBox.prototype.getWidth = function () {
+            var left = this._points.reduce(function (accum, p, i, arr) {
+                return Math.min(accum, p.x);
+            }, Infinity);
+
+            var right = this._points.reduce(function (accum, p, i, arr) {
+                return Math.max(accum, p.x);
+            }, -Infinity);
+
+            return right - left;
+        };
+
+        /**
+        * Returns the calculated height of the bounding box, by generating an axis aligned box around the current
+        * @method getHeight
+        * @returns number
+        */
+        SATBoundingBox.prototype.getHeight = function () {
+            var top = this._points.reduce(function (accum, p, i, arr) {
+                return Math.min(accum, p.y);
+            }, Infinity);
+
+            var bottom = this._points.reduce(function (accum, p, i, arr) {
+                return Math.max(accum, p.y);
+            }, -Infinity);
+
+            return top - bottom;
+        };
+
+        /**
+        * Tests wether a point is contained within the bounding box, using the PIP algorithm
+        * http://en.wikipedia.org/wiki/Point_in_polygon
+        * @method contains
+        * @param p {Point} The point to test
+        * @returns boolean
+        */
+        SATBoundingBox.prototype.contains = function (p) {
+            // Always cast to the right, as long as we cast in a consitent fixed direction we
+            // will be fine
+            var testRay = new ex.Ray(p, new ex.Vector(1, 0));
+            var intersectCount = this.getSides().reduce(function (accum, side, i, arr) {
+                if (testRay.intersect(side) >= 0) {
+                    return accum + 1;
+                }
+                return accum;
+            }, 0);
+
+            // Note: this only works for 4 sided shapes!
+            if (intersectCount >= 2) {
+                return false;
+            }
+            return true;
+        };
+
+        SATBoundingBox.prototype.collides = function (collidable) {
+            if (collidable instanceof SATBoundingBox) {
+                var other = collidable;
+                var axes = this.getAxes();
+                axes = axes.concat(other.getAxes());
+                var minOverlap = 99999;
+                var minAxis = null;
+                for (var i = 0; i < axes.length; i++) {
+                    var proj1 = this.project(axes[i]);
+                    var proj2 = other.project(axes[i]);
+                    var overlap = proj1.getOverlap(proj2);
+                    if (overlap === 0) {
+                        return;
+                    } else {
+                        if (overlap < minOverlap) {
+                            minOverlap = overlap;
+                            minAxis = axes[i];
+                        }
+                    }
+                }
+                return minAxis.normalize().scale(minOverlap);
+            }
+
+            return null;
+        };
+        return SATBoundingBox;
+    })();
+    ex.SATBoundingBox = SATBoundingBox;
 })(ex || (ex = {}));
 /// <reference path="Core.ts" />
 /// <reference path="Algebra.ts" />
@@ -2302,6 +2662,12 @@ var ex;
             * @property collisionType {CollisionType}
             */
             this.collisionType = 2 /* Active */;
+            /**
+            * Gets or sets the current collision strategy used by this actor.
+            * By default all actors use the SeparatingAxis strategy.
+            * @property collisionStrategy: {CollisionStrategy}
+            */
+            this.collisionStrategy = 1 /* SeparatingAxis */;
             this.collisionGroups = [];
             this._collisionHandlers = {};
             this._isInitialized = false;
@@ -2563,10 +2929,21 @@ var ex;
         /**
         * Returns the actor's bounding box calculated for this instant.
         * @method getBounds
-        * @returns BoundingBox
+        * @returns ICollidable
         */
         Actor.prototype.getBounds = function () {
-            return new ex.BoundingBox(this.getGlobalX(), this.getGlobalY(), this.getGlobalX() + this.getWidth(), this.getGlobalY() + this.getHeight());
+            if (this.collisionStrategy === 1 /* SeparatingAxis */) {
+                var actorPos = new ex.Vector(this.x, this.y);
+
+                var topLeft = new ex.Point(0, 0);
+                var topRight = new ex.Point(this.getWidth(), 0);
+                var bottomRight = new ex.Point(this.getWidth(), this.getHeight());
+                var bottomLeft = new ex.Point(0, this.getHeight());
+
+                return new ex.SATBoundingBox([topLeft, topRight, bottomRight, bottomLeft]);
+            } else {
+                return new ex.BoundingBox(this.getGlobalX(), this.getGlobalY(), this.getGlobalX() + this.getWidth(), this.getGlobalY() + this.getHeight());
+            }
         };
 
         /**
@@ -2937,8 +3314,9 @@ var ex;
                     if (intersectActor = this.collides(collider)) {
                         side = this.getSideFromIntersect(intersectActor);
 
-                        // Publish collision events
+                        // Publish collision events on both participants
                         eventDispatcher.publish('collision', new ex.CollisionEvent(this, collider, side, intersectActor));
+                        collider.eventDispatcher.publish('collision', new ex.CollisionEvent(collider, this, ex.Util.getOppositeSide(side), intersectActor.scale(-1.0)));
 
                         // Send collision group updates
                         collider.collisionGroups.forEach(function (group) {
@@ -2987,7 +3365,7 @@ var ex;
                         }
                         side = this.getSideFromIntersect(intersectMap);
                         eventDispatcher.publish('collision', new ex.CollisionEvent(this, null, side, intersectMap));
-                        if ((this.collisionType === 2 /* Active */ || this.collisionType === 3 /* Elastic */) && collider.collisionType !== 1 /* Passive */) {
+                        if ((this.collisionType === 2 /* Active */ || this.collisionType === 3 /* Elastic */)) {
                             //var intersectMap = map.getOverlap(this);
                             if (Math.abs(intersectMap.y) < Math.abs(intersectMap.x)) {
                                 this.y += intersectMap.y;
@@ -3103,6 +3481,7 @@ var ex;
                 for (var drawing in this.frames) {
                     this.frames[drawing].addEffect(new ex.Effects.Opacity(this.opacity));
                 }
+
                 this.previousOpacity = this.opacity;
             }
 
@@ -3122,6 +3501,8 @@ var ex;
                     //var yDiff = (this.currentDrawing.height*this.currentDrawing.getScale() - this.height)/2;
                     this.currentDrawing.draw(ctx, -xDiff, -yDiff);
                 } else {
+                    if (this.color)
+                        this.color.a = this.opacity;
                     ctx.fillStyle = this.color ? this.color.toString() : (new ex.Color(0, 0, 0)).toString();
                     ctx.fillRect(0, 0, this.width, this.height);
                 }
@@ -3425,6 +3806,7 @@ var ex;
             if (!this.invisible) {
                 if (this.spriteFont) {
                     var currX = 0;
+
                     for (var i = 0; i < this.text.length; i++) {
                         var character = this.text[i];
                         if (this.caseInsensitive) {
@@ -3432,11 +3814,18 @@ var ex;
                         }
                         try  {
                             var charSprite = sprites[character];
+                            if (this.previousOpacity !== this.opacity) {
+                                charSprite.clearEffects();
+                                charSprite.addEffect(new ex.Effects.Opacity(this.opacity));
+                            }
                             charSprite.draw(ctx, currX, 0);
                             currX += (charSprite.swidth + this.letterSpacing);
                         } catch (e) {
                             ex.Logger.getInstance().error("SpriteFont Error drawing char " + character);
                         }
+                    }
+                    if (this.previousOpacity !== this.opacity) {
+                        this.previousOpacity = this.opacity;
                     }
                     //this.spriteFont.draw(ctx, 0, 0, this.text, color, this.letterSpacing);
                 } else {
@@ -3445,7 +3834,9 @@ var ex;
 
                     ctx.textAlign = this._lookupTextAlign(this.textAlign);
                     ctx.textBaseline = this._lookupBaseAlign(this.baseAlign);
-
+                    if (this.color) {
+                        this.color.a = this.opacity;
+                    }
                     ctx.fillStyle = this.color.toString();
                     ctx.font = this.font;
                     if (this.maxWidth) {
@@ -4105,7 +4496,7 @@ var ex;
                 };
 
                 Fade.prototype.isComplete = function (actor) {
-                    return this._stopped || (Math.abs(this.actor.opacity - this.endOpacity) < 0.01);
+                    return this._stopped || (Math.abs(this.actor.opacity - this.endOpacity) < 0.05);
                 };
 
                 Fade.prototype.stop = function () {
@@ -6699,7 +7090,7 @@ var ex;
         */
         Color.prototype.toString = function () {
             var result = String(this.r.toFixed(0)) + ", " + String(this.g.toFixed(0)) + ", " + String(this.b.toFixed(0));
-            if (this.a) {
+            if (this.a !== undefined || this.a !== null) {
                 return "rgba(" + result + ", " + String(this.a) + ")";
             }
             return "rgb(" + result + ")";

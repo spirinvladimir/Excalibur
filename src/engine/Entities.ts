@@ -471,6 +471,14 @@ module ex {
        * @property collisionType {CollisionType}
        */
       public collisionType : CollisionType = CollisionType.Active;
+
+      /**
+       * Gets or sets the current collision strategy used by this actor.
+       * By default all actors use the SeparatingAxis strategy.
+       * @property collisionStrategy: {CollisionStrategy}
+       */
+      public collisionStrategy: CollisionStrategy = CollisionStrategy.SeparatingAxis;
+
       public collisionGroups : string[] = [];
 
       private _collisionHandlers: {[key: string]: {(actor: Actor):void}[];} = {};
@@ -747,10 +755,24 @@ module ex {
       /**
        * Returns the actor's bounding box calculated for this instant.
        * @method getBounds
-       * @returns BoundingBox
+       * @returns ICollidable
        */
-      public getBounds(){
-         return new BoundingBox(this.getGlobalX(), this.getGlobalY(), this.getGlobalX() + this.getWidth(), this.getGlobalY() + this.getHeight());
+      public getBounds(): ICollidable{
+         if(this.collisionStrategy === CollisionStrategy.SeparatingAxis){
+            
+            var actorPos = new ex.Vector(this.x, this.y);
+
+            var topLeft = new ex.Point(0, 0).add(actorPos);
+            var topRight = new ex.Point(this.getWidth(), 0).add(actorPos);
+            var bottomRight = new ex.Point(this.getWidth(), this.getHeight()).add(actorPos);
+            var bottomLeft = new ex.Point(0, this.getHeight()).add(actorPos);
+
+            return new SATBoundingBox([topLeft, topRight, bottomRight, bottomLeft]);
+         } else {
+            return new BoundingBox(this.getGlobalX(), this.getGlobalY(), this.getGlobalX() + this.getWidth(), this.getGlobalY() + this.getHeight());   
+         }
+
+         
       }
 
       /**
@@ -793,7 +815,26 @@ module ex {
        * @returns Side
        */
       public collidesWithSide(actor: Actor): Side {
-         return this.getSideFromIntersect(this.collides(actor));
+         var separationVector = this.collides(actor);
+         if(!separationVector){
+            return ex.Side.None;
+         }
+
+         if(Math.abs(separationVector.x) > Math.abs(separationVector.y)){
+            if(this.x < actor.x){
+               return ex.Side.Right;
+            }else{
+               return ex.Side.Left;
+            }
+         }else{
+            if(this.y < actor.y){
+               return ex.Side.Bottom;
+            }else{
+               return ex.Side.Top;
+            }
+         }
+
+         return ex.Side.None;
       }
 
       /**
@@ -1132,14 +1173,25 @@ module ex {
                         });
                      }
                   });
+                  if(this.collisionType === CollisionType.Fixed && collider.collisionType !== CollisionType.Passive){
+                     // If you are fixed collision type move others out of your way
+                     collider.x -= intersectActor.x;
+                     collider.y -= intersectActor.y;
+                  }
+
 
                   // If the actor is active push the actor out if its not passive
                   if((this.collisionType === CollisionType.Active || this.collisionType === CollisionType.Elastic) && collider.collisionType !== CollisionType.Passive){
-                     
-                     if (Math.abs(intersectActor.y) < Math.abs(intersectActor.x)) {
-                        this.y += intersectActor.y;
-                     } else {
+                     if(this.collisionStrategy === ex.CollisionStrategy.SeparatingAxis){
                         this.x += intersectActor.x;
+                        this.y += intersectActor.y;
+                     }else{
+
+                        if (Math.abs(intersectActor.y) < Math.abs(intersectActor.x)) {
+                           this.y += intersectActor.y;
+                        } else {
+                           this.x += intersectActor.x;
+                        }
                      }
 
                      // Naive elastic bounce
@@ -1353,9 +1405,11 @@ module ex {
          ctx.beginPath();
          ctx.rect(0, 0, this.getWidth(), this.getHeight());
          ctx.stroke();
-
+         
          this.sceneNode.debugDraw(ctx);
          ctx.restore();
+
+         this.getBounds().debugDraw(ctx);
 
       }
    }

@@ -2,6 +2,11 @@
 
 module ex {
 
+   export enum CollisionStrategy {
+      AxisAligned,
+      SeparatingAxis
+   }
+
    /**
     * Interface all collidable objects must implement
     * @class ICollidable
@@ -23,6 +28,8 @@ module ex {
        * @returns boolean
        */
       contains(point: Point): boolean;
+
+      debugDraw(ctx: CanvasRenderingContext2D): void;
    }
 
    /**
@@ -61,7 +68,7 @@ module ex {
        * @returns boolean
        */
       public contains(p: Point): boolean{
-         return (this.left <= p.x && this.top <= p.y && this.bottom >= p.y && this.right >= p.x);
+         return (this.left < p.x && this.top < p.y && this.bottom > p.y && this.right > p.x);
       }
 
       /** 
@@ -86,14 +93,14 @@ module ex {
                totalBoundingBox.getHeight() < other.getHeight() + this.getHeight()){
                // collision
                var overlapX = 0;
-               if(this.right > other.left && this.right < other.right){
+               if(this.right >= other.left && this.right <= other.right){
                   overlapX = other.left - this.right;
                }else{
                   overlapX = other.right - this.left;
                }
 
                var overlapY = 0;
-               if(this.top < other.bottom && this.top > other.top){
+               if(this.top <= other.bottom && this.top >= other.top){
                   overlapY = other.bottom - this.top;
                }else{
                   overlapY = other.top - this.bottom;
@@ -106,6 +113,157 @@ module ex {
          }
 
          return null;
+      }
+
+     public debugDraw(ctx: CanvasRenderingContext2D) {
+         
+     }
+   }
+
+   export class SATBoundingBox implements ICollidable {
+      private _points: Vector[];
+      constructor(points: Point[]){
+         this._points = points.map((p)=>p.toVector());
+      }
+
+      public getSides(): Line[] {
+         var lines = [];
+         var len = this._points.length;
+         for(var i = 0; i < len; i++){
+            lines.push(new Line(this._points[i], this._points[(i+1)%len]));
+         }
+         return lines;
+      }
+
+      public getAxes(): Vector[]{
+         var axes = [];
+         var len = this._points.length;
+         for(var i = 0; i < len; i++){
+            axes.push(this._points[i].minus(this._points[(i+1)%len]).normal());
+         }
+         return axes;
+      }
+
+      public project(axis: Vector){
+         var scalars = [];
+
+         var len = this._points.length;
+         for(var i = 0; i < len; i++){
+            scalars.push(this._points[i].dot(axis));
+         }
+
+         return new Projection(Math.min.apply(Math, scalars), Math.max.apply(Math, scalars));
+      }
+
+      /**
+       * Returns the calculated width of the bounding box, by generating an axis aligned box around the current
+       * @method getWidth
+       * @returns number
+       */
+      public getWidth() {
+          var left = this._points.reduce<number>((accum: number, p: Point, i, arr) => {
+              return Math.min(accum, p.x);
+          }, Infinity);
+
+          var right = this._points.reduce<number>((accum: number, p: Point, i, arr) => {
+              return Math.max(accum, p.x);
+          }, -Infinity);
+
+          return right-left;
+      }
+
+      /**
+       * Returns the calculated height of the bounding box, by generating an axis aligned box around the current
+       * @method getHeight
+       * @returns number
+       */
+      public getHeight(){
+          var top = this._points.reduce<number>((accum: number, p: Point, i, arr) => {
+              return Math.min(accum, p.y);
+          }, Infinity);
+
+          var bottom = this._points.reduce<number>((accum: number, p: Point, i, arr) => {
+              return Math.max(accum, p.y);
+          }, -Infinity);
+          
+
+          return top -bottom;
+      }
+
+      /**
+       * Tests wether a point is contained within the bounding box, using the PIP algorithm
+       * http://en.wikipedia.org/wiki/Point_in_polygon
+       * @method contains
+       * @param p {Point} The point to test
+       * @returns boolean
+       */
+      public contains(p: Point): boolean{
+         // Always cast to the right, as long as we cast in a consitent fixed direction we
+         // will be fine
+         var testRay = new Ray(p, new Vector(1, 0));
+         var intersectCount = this.getSides().reduce<number>((accum: number, side, i, arr) => {
+            if (testRay.intersect(side) >= 0) {
+                return accum + 1;
+            }
+            return accum;
+         }, 0);
+
+         
+         if (intersectCount % 2 === 0) {
+             return false;
+         }
+         return true;
+      }
+
+
+      public collides(collidable: ICollidable): Vector{
+         if(collidable instanceof SATBoundingBox){
+            var other: SATBoundingBox = <SATBoundingBox>collidable;
+            var axes = this.getAxes();
+            axes = other.getAxes().concat(axes);
+            var minOverlap = 99999;
+            var minAxis = null;
+            for(var i = 0; i < axes.length; i++){               
+                  var proj1 = this.project(axes[i]);
+                  var proj2 = other.project(axes[i]);
+                  var overlap = proj1.getOverlap(proj2);
+                  
+                  if(overlap === 0){
+                     return null;
+                  }else{
+                     if(overlap <= minOverlap){
+                        minOverlap = overlap;
+                        minAxis = axes[i];
+                     }
+                  }
+            }
+
+            if(minAxis){
+               return minAxis.normalize().scale(minOverlap);
+            }else{
+               return null;
+            }
+         }
+
+         return null;
+      }
+
+
+      public debugDraw(ctx: CanvasRenderingContext2D){
+         ctx.beginPath();
+         ctx.lineWidth = 2;
+
+         // Iterate through the supplied points and contruct a 'polygon'
+         var firstPoint = this._points[0];
+         ctx.moveTo(firstPoint.x, firstPoint.y);
+         this._points.forEach((point)=> {
+            ctx.lineTo(point.x, point.y);
+         });
+         ctx.lineTo(firstPoint.x, firstPoint.y);
+         ctx.closePath();
+
+         ctx.strokeStyle = Color.Blue.toString();
+         ctx.stroke();
       }
    }
 }

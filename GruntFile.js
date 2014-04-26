@@ -96,16 +96,15 @@ module.exports = function (grunt) {
          // TODO: Simplify this so we don't have to always update it every time we add a spec
          //
          specs: {
-            command: 'tsc "./src/spec/ActorSpec.ts" -out "./src/spec/ActorSpec.js";' +
-            'tsc "./src/spec/ColorSpec.ts" -out "./src/spec/ColorSpec.js";' +
-            'tsc "./src/spec/PromiseSpec.ts" -out "./src/spec/PromiseSpec.js";' +
-            'tsc "./src/spec/CollectionSpec.ts" -out "./src/spec/CollectionSpec.js";' +
-            'tsc "./src/spec/LogSpec.ts" -out "./src/spec/LogSpec.js";' + 
-            'tsc "./src/spec/TimerSpec.ts" -out "./src/spec/TimerSpec.js";' +
-            'tsc "./src/spec/ClassSpec.ts" -out "./src/spec/ClassSpec.js";' + 
-            'tsc "./src/spec/CollisionGroupSpec.ts" -out "./src/spec/CollisionGroupSpec.js";' + 
-            'tsc "./src/spec/BoundingBoxSpec.ts" -out "./src/spec/BoundingBoxSpec.js";' + 
-            'tsc "./src/spec/CameraSpec.ts" -out "./src/spec/CameraSpec.js"',
+            command: ['tsc "./src/spec/ActorSpec.ts" -out "./src/spec/ActorSpec.js"',
+            'tsc "./src/spec/ColorSpec.ts" -out "./src/spec/ColorSpec.js"',
+            'tsc "./src/spec/PromiseSpec.ts" -out "./src/spec/PromiseSpec.js"',
+            'tsc "./src/spec/CollectionSpec.ts" -out "./src/spec/CollectionSpec.js"',
+            'tsc "./src/spec/LogSpec.ts" -out "./src/spec/LogSpec.js"',
+            'tsc "./src/spec/TimerSpec.ts" -out "./src/spec/TimerSpec.js"',
+            'tsc "./src/spec/ClassSpec.ts" -out "./src/spec/ClassSpec.js"',
+            'tsc "./src/spec/CollisionGroupSpec.ts" -out "./src/spec/CollisionGroupSpec.js"', 
+            'tsc "./src/spec/CameraSpec.ts" -out "./src/spec/CameraSpec.js"'].join('&&'),
             options: {
                stdout: true,
                failOnError: true
@@ -191,6 +190,8 @@ module.exports = function (grunt) {
 
    // Compile sample game
    grunt.registerTask('sample', ['shell:sample']);
+
+   grunt.registerTask('compile', ['shell:tsc', 'minified', 'concat', 'copy']);
 
    // Default task - compile, test, build dists
    grunt.registerTask('default', ['tests', 'shell:tsc', 'minified', 'concat', 'copy', 'sample', 'shell:nuget']);
