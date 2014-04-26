@@ -1969,7 +1969,7 @@ var ex;
                 ctx.lineTo(this.x + width, this.y + y * this.cellHeight);
                 ctx.stroke();
             }
-            var solid = ex.Color.Blue.clone();
+            var solid = ex.Color.Red.clone();
             solid.a = .3;
             this.data.filter(function (cell) {
                 return cell.solid;
