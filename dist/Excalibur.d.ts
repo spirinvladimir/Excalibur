@@ -4321,3 +4321,4 @@ declare module ex {
         public load(loader: ILoadable): Promise<any>;
     }
 }
+}
