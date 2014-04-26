@@ -1175,7 +1175,7 @@ module ex {
                   } 
                   side = this.getSideFromIntersect(intersectMap);
                   eventDispatcher.publish('collision', new CollisionEvent(this, null, side, intersectMap));
-                  if((this.collisionType === CollisionType.Active || this.collisionType === CollisionType.Elastic) && collider.collisionType !== CollisionType.Passive){
+                  if(this.collisionType === CollisionType.Active || this.collisionType === CollisionType.Elastic){
                      //var intersectMap = map.getOverlap(this);
                      if (Math.abs(intersectMap.y) < Math.abs(intersectMap.x)) {
                         this.y += intersectMap.y;
