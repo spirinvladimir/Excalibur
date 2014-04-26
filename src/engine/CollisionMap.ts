@@ -310,7 +310,14 @@ module ex {
             ctx.lineTo(this.x + width, this.y + y*this.cellHeight);
             ctx.stroke()
          }
-
+         var solid = ex.Color.Blue.clone();
+         solid.a = .3;
+         this.data.filter(function(cell){
+            return cell.solid;
+         }).forEach(function(cell){
+            ctx.fillStyle = solid.toString();
+            ctx.fillRect(cell.x, cell.y, cell.width, cell.height);
+         });
 
 
          if(this._collidingY > -1 && this._collidingX > -1){

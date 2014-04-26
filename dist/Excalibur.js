@@ -1969,6 +1969,14 @@ var ex;
                 ctx.lineTo(this.x + width, this.y + y * this.cellHeight);
                 ctx.stroke();
             }
+            var solid = ex.Color.Blue.clone();
+            solid.a = .3;
+            this.data.filter(function (cell) {
+                return cell.solid;
+            }).forEach(function (cell) {
+                ctx.fillStyle = solid.toString();
+                ctx.fillRect(cell.x, cell.y, cell.width, cell.height);
+            });
 
             if (this._collidingY > -1 && this._collidingX > -1) {
                 ctx.fillStyle = ex.Color.Cyan.toString();
@@ -2692,7 +2700,7 @@ var ex;
             * By default all actors use the SeparatingAxis strategy.
             * @property collisionStrategy: {CollisionStrategy}
             */
-            this.collisionStrategy = 1 /* SeparatingAxis */;
+            this.collisionStrategy = 0 /* AxisAligned */;
             this.collisionGroups = [];
             this._collisionHandlers = {};
             this._isInitialized = false;
@@ -3016,7 +3024,7 @@ var ex;
                 return 0 /* None */;
             }
 
-            if (Math.abs(separationVector.x) < Math.abs(separationVector.y)) {
+            if (Math.abs(separationVector.x) > Math.abs(separationVector.y)) {
                 if (this.x < actor.x) {
                     return 4 /* Right */;
                 } else {
