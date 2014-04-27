@@ -260,9 +260,9 @@ module ex {
          var worldCoordsLowerRight = engine.screenToWorldCoordinates(new Point(engine.width, engine.height));
          
          this._onScreenXStart = Math.max(Math.floor(worldCoordsUpperLeft.x/this.cellWidth)-2,0);
-         this._onScreenYStart = Math.max(Math.floor((worldCoordsUpperLeft.y-this.y)/this.cellHeight),0);
-         this._onScreenXEnd = Math.max(Math.floor(worldCoordsLowerRight.x/this.cellWidth),0);
-         this._onScreenYEnd = Math.max(Math.floor((worldCoordsLowerRight.y-this.y)/this.cellHeight)+1,0);
+         this._onScreenYStart = Math.max(Math.floor((worldCoordsUpperLeft.y-this.y)/this.cellHeight)-2,0);
+         this._onScreenXEnd = Math.max(Math.floor(worldCoordsLowerRight.x/this.cellWidth)+2,0);
+         this._onScreenYEnd = Math.max(Math.floor((worldCoordsLowerRight.y-this.y)/this.cellHeight)+2,0);
       }
 
       /**
