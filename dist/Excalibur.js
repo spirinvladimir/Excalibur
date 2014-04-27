@@ -1008,6 +1008,7 @@ var ex;
     var Util = ex.Util;
 })(ex || (ex = {}));
 /// <reference path="Core.ts" />
+/// <reference path="Algebra.ts" />
 var ex;
 (function (ex) {
     var TileSprite = (function () {
@@ -1080,6 +1081,10 @@ var ex;
         */
         Cell.prototype.getBounds = function () {
             return this._bounds;
+        };
+
+        Cell.prototype.getCenter = function () {
+            return new ex.Vector(this.x + this.width / 2, this.y + this.height / 2);
         };
 
         Cell.prototype.pushSprite = function (tileSprite) {
@@ -1156,7 +1161,15 @@ var ex;
                     var yover = 0;
                     if (cell && cell.solid) {
                         var overlap = actorBounds.collides(cell.getBounds());
-                        if (overlap) {
+
+                        if (Math.abs(overlap.x) < Math.abs(overlap.y)) {
+                            overlap.y = 0;
+                        } else {
+                            overlap.x = 0;
+                        }
+                        var dir = actor.getCenter().minus(cell.getCenter());
+
+                        if (overlap && overlap.dot(dir) > 0) {
                             overlaps.push(overlap);
                         }
                     }
@@ -1450,6 +1463,15 @@ var ex;
 
         BoundingBox.prototype.debugDraw = function (ctx) {
         };
+
+        BoundingBox.prototype.toSATBB = function () {
+            return new SATBoundingBox([
+                new ex.Point(this.left, this.top),
+                new ex.Point(this.right, this.top),
+                new ex.Point(this.right, this.bottom),
+                new ex.Point(this.left, this.bottom)
+            ]);
+        };
         return BoundingBox;
     })();
     ex.BoundingBox = BoundingBox;
@@ -1460,6 +1482,10 @@ var ex;
                 return p.toVector();
             });
         }
+        SATBoundingBox.prototype.toSATBB = function () {
+            return this;
+        };
+
         SATBoundingBox.prototype.getSides = function () {
             var lines = [];
             var len = this._points.length;
@@ -2789,7 +2815,7 @@ var ex;
 
                     while (intersectMap = map.collides(this)) {
                         //iters.push(intersectMap);
-                        //console.log("CollisionMap", intersectMap);
+                        console.log("CollisionMap", intersectMap);
                         if (max-- < 0) {
                             break;
                         }
@@ -2797,11 +2823,12 @@ var ex;
                         eventDispatcher.publish('collision', new ex.CollisionEvent(this, null, side, intersectMap));
                         if (this.collisionType === 2 /* Active */ || this.collisionType === 3 /* Elastic */) {
                             //var intersectMap = map.getOverlap(this);
-                            if (Math.abs(intersectMap.y) < Math.abs(intersectMap.x)) {
-                                this.y += intersectMap.y;
+                            this.y += intersectMap.y;
+                            this.x += intersectMap.x;
+
+                            if (Math.abs(intersectMap.y) > Math.abs(intersectMap.x)) {
                                 this.dy = 0;
                             } else {
-                                this.x += intersectMap.x;
                                 this.dx = 0;
                             }
 

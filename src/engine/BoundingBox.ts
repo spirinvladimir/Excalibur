@@ -29,7 +29,9 @@ module ex {
        */
       contains(point: Point): boolean;
 
+      toSATBB(): SATBoundingBox;
       debugDraw(ctx: CanvasRenderingContext2D): void;
+
    }
 
    /**
@@ -118,6 +120,16 @@ module ex {
      public debugDraw(ctx: CanvasRenderingContext2D) {
          
      }
+
+     public toSATBB(): SATBoundingBox {
+         return new SATBoundingBox([
+             new ex.Point(this.left, this.top),
+             new ex.Point(this.right, this.top),
+             new ex.Point(this.right, this.bottom),
+             new ex.Point(this.left, this.bottom)
+         ]);
+     }
+
    }
 
    export class SATBoundingBox implements ICollidable {
@@ -126,7 +138,11 @@ module ex {
          this._points = points.map((p)=>p.toVector());
       }
 
-      public getSides(): Line[] {
+       public toSATBB(): SATBoundingBox {
+           return this;
+       }
+
+       public getSides(): Line[] {
          var lines = [];
          var len = this._points.length;
          for(var i = 0; i < len; i++){

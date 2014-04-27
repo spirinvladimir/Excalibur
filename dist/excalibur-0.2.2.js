@@ -1,4 +1,4 @@
-/*! excalibur - v0.2.2 - 2014-04-26
+/*! excalibur - v0.2.2 - 2014-04-27
 * https://github.com/excaliburjs/Excalibur
 * Copyright (c) 2014 ; Licensed BSD*/
 if (typeof window == 'undefined') {
@@ -1825,7 +1825,7 @@ var ex;
                     var xover = 0;
                     var yover = 0;
                     if (cell && cell.solid) {
-                        var overlap = actorBounds.collides(cell.getBounds());
+                        var overlap = actorBounds.toSATBB().collides(cell.getBounds().toSATBB());
                         if (overlap) {
                             overlaps.push(overlap);
                         }
@@ -2120,6 +2120,15 @@ var ex;
 
         BoundingBox.prototype.debugDraw = function (ctx) {
         };
+
+        BoundingBox.prototype.toSATBB = function () {
+            return new SATBoundingBox([
+                new ex.Point(this.left, this.top),
+                new ex.Point(this.right, this.top),
+                new ex.Point(this.right, this.bottom),
+                new ex.Point(this.left, this.bottom)
+            ]);
+        };
         return BoundingBox;
     })();
     ex.BoundingBox = BoundingBox;
@@ -2130,6 +2139,10 @@ var ex;
                 return p.toVector();
             });
         }
+        SATBoundingBox.prototype.toSATBB = function () {
+            return this;
+        };
+
         SATBoundingBox.prototype.getSides = function () {
             var lines = [];
             var len = this._points.length;

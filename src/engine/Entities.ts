@@ -1220,7 +1220,7 @@ module ex {
                //var iters: Vector[] = [];
                while(intersectMap = map.collides(this)){
                   //iters.push(intersectMap);
-                  //console.log("CollisionMap", intersectMap);
+                  console.log("CollisionMap", intersectMap);
                   if(max--<0){
 
                      //console.log(iters);
@@ -1231,13 +1231,15 @@ module ex {
                   eventDispatcher.publish('collision', new CollisionEvent(this, null, side, intersectMap));
                   if(this.collisionType === CollisionType.Active || this.collisionType === CollisionType.Elastic){
                      //var intersectMap = map.getOverlap(this);
-                     if (Math.abs(intersectMap.y) < Math.abs(intersectMap.x)) {
-                        this.y += intersectMap.y;
+                      this.y += intersectMap.y;
+                      this.x += intersectMap.x;
+
+                      if (Math.abs(intersectMap.y) > Math.abs(intersectMap.x)) {
                         this.dy = 0;
-                     } else {
-                        this.x += intersectMap.x;
+                       
+                      } else {
                         this.dx = 0;
-                     }
+                      }
 
                      // Naive elastic bounce
                      if(this.collisionType === CollisionType.Elastic && !hasBounced){
