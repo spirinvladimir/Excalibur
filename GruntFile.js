@@ -71,7 +71,7 @@ module.exports = function (grunt) {
       watch: {
          scripts: {
             files: 'src/engine/*.ts',
-            task: ['tests'],
+            tasks: ['shell:specs', 'jasmine_node'],
             options: {
                interrupt: true
             }
