@@ -1,7 +1,7 @@
 /// <reference path="Core.ts" />
 /// <reference path="Algebra.ts" />
 /// <reference path="Util.ts" />
-/// <reference path="CollisionMap.ts" />
+/// <reference path="TileMap.ts" />
 /// <reference path="BoundingBox.ts" />
 
 module ex {
@@ -26,7 +26,7 @@ module ex {
        * @property children {Actor[]}
        */
       public children: Actor[] = [];
-      public collisionMaps: CollisionMap[] = [];
+      public collisionMaps: TileMap[] = [];
       public engine: Engine;
       private killQueue: Actor[] = [];
 
@@ -181,11 +181,11 @@ module ex {
          actor.parent = this.actor;
       }
 
-      public addCollisionMap(collisionMap: CollisionMap){
+      public addTileMap(collisionMap: TileMap){
          this.collisionMaps.push(collisionMap);
       }
 
-      public removeCollisionMap(collisionMap: CollisionMap){
+      public removeTileMap(collisionMap: TileMap){
          var index = this.collisionMaps.indexOf(collisionMap);
          if(index > -1){
             this.collisionMaps.splice(index, 1);
@@ -1215,12 +1215,14 @@ module ex {
                var map = engine.currentScene.collisionMaps[j];
                var intersectMap: Vector;
                var side = Side.None;
-               var max = 5;
+               var max = 2;
                var hasBounced = false;
                //var iters: Vector[] = [];
                while(intersectMap = map.collides(this)){
                   //iters.push(intersectMap);
+                  //console.log("CollisionMap", intersectMap);
                   if(max--<0){
+
                      //console.log(iters);
                      //console.log("Max iterations exceeded!");
                      break;
@@ -1231,8 +1233,10 @@ module ex {
                      //var intersectMap = map.getOverlap(this);
                      if (Math.abs(intersectMap.y) < Math.abs(intersectMap.x)) {
                         this.y += intersectMap.y;
+                        this.dy = 0;
                      } else {
                         this.x += intersectMap.x;
+                        this.dx = 0;
                      }
 
                      // Naive elastic bounce
