@@ -811,9 +811,11 @@ module ex.Internal.Actions {
       }
 
       public clearActions(): void {
-         this._actions.length = 0;
-         this._completedActions.length = 0;
-         this._currentAction.stop();
+         if(this._actions.length){
+            this._actions.length = 0;
+            this._completedActions.length = 0;
+            this._currentAction.stop();
+         }
       }
 
       public getActions(): IAction[] {
