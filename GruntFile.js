@@ -66,6 +66,19 @@ module.exports = function (grunt) {
       },
 
       //
+      // Watch files
+      //
+      watch: {
+         scripts: {
+            files: 'src/engine/*.ts',
+            task: ['tests'],
+            options: {
+               interrupt: true
+            }
+         }
+      },
+
+      //
       // Shell Commands
       //
       shell: {
@@ -158,14 +171,7 @@ module.exports = function (grunt) {
          }
       },
 
-      //
-      // Watch the source dirs and run shell tasks (re-compile) if they change
-      //
-      watch: {
-         files: '<config:source.files>',
-         tasks: 'shell'
-      },
-
+      
       //
       // UglifyJS configuration
       //
@@ -179,6 +185,7 @@ module.exports = function (grunt) {
    grunt.loadNpmTasks('grunt-minified');
    grunt.loadNpmTasks('grunt-contrib-concat');
    grunt.loadNpmTasks('grunt-contrib-copy');
+   grunt.loadNpmTasks('grunt-contrib-watch');
    grunt.loadNpmTasks('grunt-jasmine-node');
 
    //
