@@ -61,6 +61,7 @@
     <TypeScriptCompile Include="Action.ts" />
     <TypeScriptCompile Include="Algebra.ts" />
     <TypeScriptCompile Include="Camera.ts" />
+    <TypeScriptCompile Include="CollisionMap.ts" />
     <TypeScriptCompile Include="Core.ts" />
     <TypeScriptCompile Include="Drawing.ts" />
     <TypeScriptCompile Include="Entities.ts" />
