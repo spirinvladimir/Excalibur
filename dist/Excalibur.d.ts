@@ -1,4 +1,4 @@
-declare module ex {
+﻿declare module ex {
     /**
     * A simple 2D point on a plane
     * @class Point

@@ -1213,14 +1213,8 @@ module ex {
                var side = Side.None;
                var max = 2;
                var hasBounced = false;
-               //var iters: Vector[] = [];
                while(intersectMap = map.collides(this)){
-                  //iters.push(intersectMap);
-                  console.log("CollisionMap", intersectMap);
                   if(max--<0){
-
-                     //console.log(iters);
-                     //console.log("Max iterations exceeded!");
                      break;
                   } 
                   side = this.getSideFromIntersect(intersectMap);

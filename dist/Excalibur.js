@@ -1,4 +1,4 @@
-var __extends = this.__extends || function (d, b) {
+﻿var __extends = this.__extends || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
     __.prototype = b.prototype;
@@ -2808,10 +2808,7 @@ var ex;
                     var side = 0 /* None */;
                     var max = 2;
                     var hasBounced = false;
-
                     while (intersectMap = map.collides(this)) {
-                        //iters.push(intersectMap);
-                        console.log("CollisionMap", intersectMap);
                         if (max-- < 0) {
                             break;
                         }
