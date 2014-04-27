@@ -563,11 +563,16 @@ module ex {
        * @param handler {GameEvent=>void} The handler callback to fire on this event
        */
       public subscribe(eventName: string, handler: (event?: GameEvent) => void) {
-         eventName = eventName.toLowerCase();
-         if (!this._handlers[eventName]) {
-            this._handlers[eventName] = [];
-         }
-         this._handlers[eventName].push(handler);
+         var events: string[] = eventName.split(',').map(function(eventName){return eventName.toLowerCase().trim()});
+         
+         events.forEach((eventName)=>{
+            eventName = eventName.toLowerCase();
+            if (!this._handlers[eventName]) {
+               this._handlers[eventName] = [];
+            }
+            this._handlers[eventName].push(handler);
+         });
+         
       }
 
       /**
