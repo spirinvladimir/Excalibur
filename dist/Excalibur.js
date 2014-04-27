@@ -1,4 +1,4 @@
-﻿var __extends = this.__extends || function (d, b) {
+var __extends = this.__extends || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
     __.prototype = b.prototype;
@@ -1161,12 +1161,6 @@ var ex;
                     var yover = 0;
                     if (cell && cell.solid) {
                         var overlap = actorBounds.collides(cell.getBounds());
-
-                        if (Math.abs(overlap.x) < Math.abs(overlap.y)) {
-                            overlap.y = 0;
-                        } else {
-                            overlap.x = 0;
-                        }
                         var dir = actor.getCenter().minus(cell.getCenter());
 
                         if (overlap && overlap.dot(dir) > 0) {

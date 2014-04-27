@@ -158,12 +158,6 @@ module ex {
                var yover = 0;
                if(cell && cell.solid){
                    var overlap = actorBounds.collides(cell.getBounds());
-                   
-                   if (Math.abs(overlap.x) < Math.abs(overlap.y)) {
-                       overlap.y = 0;
-                   } else {
-                       overlap.x = 0;
-                   }
                    var dir = actor.getCenter().minus(cell.getCenter());
 
                   if(overlap && overlap.dot(dir) > 0){
