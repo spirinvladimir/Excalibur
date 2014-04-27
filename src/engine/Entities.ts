@@ -793,16 +793,16 @@ module ex {
       */
       public getSideFromIntersect(intersect: Vector){
          if(intersect){
-            if(Math.abs(intersect.x) < Math.abs(intersect.y)){
-               if(intersect.x < 0){
-                  return Side.Right;
-               }
-               return Side.Left;
+            if(Math.abs(intersect.x) > Math.abs(intersect.y)){
+                if (intersect.x > 0) {
+                    return Side.Right;
+                }
+                return Side.Left;
             }else{
-               if(intersect.y < 0){
-                  return Side.Bottom;
-               }
-               return Side.Top;
+                if (intersect.y > 0) {
+                    return Side.Bottom;
+                }
+                return Side.Top;
             }
          }
          return Side.None;
@@ -1186,12 +1186,8 @@ module ex {
                         this.x += intersectActor.x;
                         this.y += intersectActor.y;
                      }else{
-
-                        if (Math.abs(intersectActor.y) < Math.abs(intersectActor.x)) {
-                           this.y += intersectActor.y;
-                        } else {
-                           this.x += intersectActor.x;
-                        }
+                        this.y += intersectActor.y;
+                        this.x += intersectActor.x;
                      }
 
                      // Naive elastic bounce

@@ -1,4 +1,4 @@
-var __extends = this.__extends || function (d, b) {
+﻿var __extends = this.__extends || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
     __.prototype = b.prototype;
@@ -1452,7 +1452,12 @@ var ex;
                     } else {
                         overlapY = other.top - this.bottom;
                     }
-                    return new ex.Vector(overlapX, overlapY);
+
+                    if (Math.abs(overlapX) < Math.abs(overlapY)) {
+                        return new ex.Vector(overlapX, 0);
+                    } else {
+                        return new ex.Vector(0, overlapY);
+                    }
                 } else {
                     return null;
                 }
@@ -2390,13 +2395,13 @@ var ex;
         */
         Actor.prototype.getSideFromIntersect = function (intersect) {
             if (intersect) {
-                if (Math.abs(intersect.x) < Math.abs(intersect.y)) {
-                    if (intersect.x < 0) {
+                if (Math.abs(intersect.x) > Math.abs(intersect.y)) {
+                    if (intersect.x > 0) {
                         return 4 /* Right */;
                     }
                     return 3 /* Left */;
                 } else {
-                    if (intersect.y < 0) {
+                    if (intersect.y > 0) {
                         return 2 /* Bottom */;
                     }
                     return 1 /* Top */;
@@ -2783,11 +2788,8 @@ var ex;
                                 this.x += intersectActor.x;
                                 this.y += intersectActor.y;
                             } else {
-                                if (Math.abs(intersectActor.y) < Math.abs(intersectActor.x)) {
-                                    this.y += intersectActor.y;
-                                } else {
-                                    this.x += intersectActor.x;
-                                }
+                                this.y += intersectActor.y;
+                                this.x += intersectActor.x;
                             }
 
                             // Naive elastic bounce
@@ -6752,6 +6754,11 @@ var ex;
         * @Property Fixed {DisplayMode}
         */
         DisplayMode[DisplayMode["Fixed"] = 2] = "Fixed";
+
+        /**
+        * Canvas fills parent but maintains aspect ratio (no resolution change)
+        */
+        DisplayMode[DisplayMode["Fill"] = 3] = "Fill";
     })(ex.DisplayMode || (ex.DisplayMode = {}));
     var DisplayMode = ex.DisplayMode;
 
@@ -6899,8 +6906,11 @@ var ex;
             if (width && height) {
                 if (displayMode == undefined) {
                     this.displayMode = 2 /* Fixed */;
+                } else {
+                    this.displayMode = displayMode;
                 }
-                this.logger.debug("Engine viewport is size " + width + " x " + height);
+
+                this.logger.debug("Engine viewport is size " + width + " x " + height, "using DisplayMode", displayMode);
                 this.width = width;
                 this.canvas.width = width;
                 this.height = height;
@@ -7107,6 +7117,19 @@ var ex;
                 this.width = this.canvas.width = parent.innerWidth;
                 this.height = this.canvas.height = parent.innerHeight;
             }
+
+            if (this.displayMode === 3 /* Fill */) {
+                var ws = parent.clientWidth / this.canvas.width;
+                var hs = parent.clientHeight / this.canvas.height;
+
+                var s = Math.min(ws, hs);
+
+                // scale to aspect ratio
+                this.width = (this.canvas.width * s);
+                this.height = (this.canvas.height * s);
+                this.canvas.style.width = (this.canvas.width * s).toString() + "px";
+                this.canvas.style.height = (this.canvas.height * s).toString() + "px";
+            }
         };
 
         /**
@@ -7116,8 +7139,8 @@ var ex;
         */
         Engine.prototype.initialize = function () {
             var _this = this;
-            if (this.displayMode === 0 /* FullScreen */ || this.displayMode === 1 /* Container */) {
-                var parent = (this.displayMode === 1 /* Container */ ? (this.canvas.parentElement || document.body) : window);
+            if (this.displayMode === 0 /* FullScreen */ || this.displayMode === 1 /* Container */ || this.displayMode === 3 /* Fill */) {
+                var parent = (this.displayMode === 1 /* Container */ || this.displayMode === 3 /* Fill */ ? (this.canvas.parentElement || document.body) : window);
 
                 this.setHeightByDisplayMode(parent);
 

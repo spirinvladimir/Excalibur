@@ -107,7 +107,12 @@ module ex {
                }else{
                   overlapY = other.top - this.bottom;
                }
-               return new Vector(overlapX, overlapY);
+              
+               if (Math.abs(overlapX) < Math.abs(overlapY)) {
+                   return new Vector(overlapX, 0);
+               } else {
+                   return new Vector(0, overlapY);
+               }
             }else{
                return null;
             }

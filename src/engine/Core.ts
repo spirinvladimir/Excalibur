@@ -416,7 +416,12 @@ module ex {
        * Show the game as a fixed size 
        * @Property Fixed {DisplayMode}
        */
-      Fixed
+      Fixed,
+
+      /**
+       * Canvas fills parent but maintains aspect ratio (no resolution change)
+       */
+      Fill
    }
 
    // internal
@@ -603,8 +608,11 @@ module ex {
          if (width && height) {
             if (displayMode == undefined) {
                this.displayMode = DisplayMode.Fixed;
+            } else {
+               this.displayMode = displayMode;
             }
-            this.logger.debug("Engine viewport is size " + width + " x " + height);
+            
+            this.logger.debug("Engine viewport is size " + width + " x " + height, "using DisplayMode", displayMode);
             this.width = width; 
             this.canvas.width = width;
             this.height = height; 
@@ -803,15 +811,29 @@ module ex {
       private setHeightByDisplayMode(parent: any) {
          if (this.displayMode === DisplayMode.Container) {
             this.width = this.canvas.width = parent.clientWidth;
-            this.height = this.canvas.height = parent.clientHeight
-      }
+            this.height = this.canvas.height = parent.clientHeight;
+         }
 
          if (this.displayMode === DisplayMode.FullScreen) {
             document.body.style.margin = '0px';
             document.body.style.overflow = 'hidden';
             this.width = this.canvas.width = parent.innerWidth;
-            this.height = this.canvas.height = parent.innerHeight
-      }
+            this.height = this.canvas.height = parent.innerHeight;
+         }
+
+         if (this.displayMode === DisplayMode.Fill) {
+
+            var ws = parent.clientWidth / this.canvas.width;
+            var hs = parent.clientHeight / this.canvas.height;
+
+            var s = Math.min(ws, hs);
+
+            // scale to aspect ratio
+            this.width = (this.canvas.width * s);
+            this.height = (this.canvas.height * s);
+            this.canvas.style.width = (this.canvas.width * s).toString() + "px";
+            this.canvas.style.height = (this.canvas.height * s).toString() + "px";            
+         }
       }
 
       /**
@@ -820,10 +842,11 @@ module ex {
        * @private
        */
       private initialize() {
-         if (this.displayMode === DisplayMode.FullScreen || this.displayMode === DisplayMode.Container) {
+         if (this.displayMode === DisplayMode.FullScreen || this.displayMode === DisplayMode.Container || this.displayMode === DisplayMode.Fill) {
 
-
-            var parent = <any>(this.displayMode === DisplayMode.Container ? <any>(this.canvas.parentElement || document.body) : <any>window);
+            var parent = <any>(this.displayMode === DisplayMode.Container || this.displayMode === DisplayMode.Fill
+               ? <any>(this.canvas.parentElement || document.body)
+               : <any>window);
 
             this.setHeightByDisplayMode(parent);
 

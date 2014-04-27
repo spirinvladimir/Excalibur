@@ -1,4 +1,4 @@
-declare module ex {
+﻿declare module ex {
     /**
     * A simple 2D point on a plane
     * @class Point
@@ -3759,6 +3759,10 @@ declare module ex {
         * @Property Fixed {DisplayMode}
         */
         Fixed = 2,
+        /**
+        * Canvas fills parent but maintains aspect ratio (no resolution change)
+        */
+        Fill = 3,
     }
     class Timer {
         static id: number;
