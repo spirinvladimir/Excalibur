@@ -1215,7 +1215,7 @@ module ex {
                var map = engine.currentScene.collisionMaps[j];
                var intersectMap: Vector;
                var side = Side.None;
-               var max = 2;
+               var max = 5;
                var hasBounced = false;
                //var iters: Vector[] = [];
                while(intersectMap = map.collides(this)){
@@ -1345,9 +1345,7 @@ module ex {
          if(this.isOffScreen) return;
 
          ctx.save();
-         ctx.translate(this.x, this.y);
-         ctx.rotate(this.rotation);     
-         ctx.scale(this.scaleX, this.scaleY);
+          ctx.translate(this.x, this.y);
 
          if (this.previousOpacity != this.opacity) {
             // Object.keys(this.frames).forEach(function (key) {
@@ -1366,18 +1364,23 @@ module ex {
                var xDiff = 0;
                var yDiff = 0;
                if (this.centerDrawingX) {
-                  xDiff = (this.currentDrawing.width * this.currentDrawing.getScaleX() - this.width) / 2;
+                  ctx.translate(this.getWidth() / 2, 0);
+                    
+                  xDiff = (this.currentDrawing.width/2 * this.currentDrawing.getScaleX());
                }
 
-               if (this.centerDrawingY) {
-                  yDiff = (this.currentDrawing.height * this.currentDrawing.getScaleY() - this.height) / 2;
+                if (this.centerDrawingY) {
+                  ctx.translate(0, this.getHeight() / 2);
+                  yDiff = (this.currentDrawing.height/2 * this.currentDrawing.getScaleY());
                }
-
-               //var xDiff = (this.currentDrawing.width*this.currentDrawing.getScale() - this.width)/2;
-               //var yDiff = (this.currentDrawing.height*this.currentDrawing.getScale() - this.height)/2;
-               this.currentDrawing.draw(ctx, -xDiff, -yDiff);
+                
+                ctx.rotate(this.rotation);
+                this.currentDrawing.draw(ctx, -xDiff, -yDiff);
 
             } else {
+               
+               ctx.rotate(this.rotation);
+               ctx.scale(this.scaleX, this.scaleY);
                if(this.color) this.color.a = this.opacity;
                ctx.fillStyle = this.color ? this.color.toString() : (new Color(0, 0, 0)).toString();
                ctx.fillRect(0, 0, this.width, this.height);
