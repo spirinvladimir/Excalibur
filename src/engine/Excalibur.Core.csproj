@@ -60,6 +60,8 @@
   <ItemGroup>
     <TypeScriptCompile Include="Action.ts" />
     <TypeScriptCompile Include="Algebra.ts" />
+    <TypeScriptCompile Include="Binding.ts" />
+    <TypeScriptCompile Include="BoundingBox.ts" />
     <TypeScriptCompile Include="Camera.ts" />
     <TypeScriptCompile Include="CollisionMap.ts" />
     <TypeScriptCompile Include="Core.ts" />
@@ -72,6 +74,7 @@
     <TypeScriptCompile Include="Particles.ts" />
     <TypeScriptCompile Include="Promises.ts" />
     <TypeScriptCompile Include="Sound.ts" />
+    <TypeScriptCompile Include="TileMap.ts" />
     <TypeScriptCompile Include="Util.ts" />
   </ItemGroup>
   <Import Project="$(VSToolsPath)\TypeScript\Microsoft.TypeScript.targets" Condition="Exists('$(VSToolsPath)\TypeScript\Microsoft.TypeScript.targets')" />
