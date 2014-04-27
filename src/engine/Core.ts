@@ -768,7 +768,7 @@ module ex {
          var newY = point.y;
 
          if (this.camera) {
-            var focus = this.camera.getFocus();
+            var focus = this.camera.getFocus(true);
             newX -= focus.x;
             newY -= focus.y;
          }
@@ -790,7 +790,7 @@ module ex {
          var screenX = point.x;
          var screenY = point.y;
 
-         if(this.camera){
+         if(this.camera) {
             var focus = this.camera.getFocus();
 
             screenX += focus.x * (this.getWidth() / this.canvas.clientWidth);
@@ -823,16 +823,19 @@ module ex {
 
          if (this.displayMode === DisplayMode.Fill) {
 
-            var ws = parent.clientWidth / this.canvas.width;
-            var hs = parent.clientHeight / this.canvas.height;
+            // window
+            var ws = parent.innerWidth / this.canvas.width;
+            var hs = parent.innerHeight / this.canvas.height;
 
             var s = Math.min(ws, hs);
 
             // scale to aspect ratio
-            this.width = (this.canvas.width * s);
-            this.height = (this.canvas.height * s);
-            this.canvas.style.width = (this.canvas.width * s).toString() + "px";
-            this.canvas.style.height = (this.canvas.height * s).toString() + "px";            
+            var w = Math.floor(this.canvas.width * s),
+               h = Math.floor(this.canvas.height * s);
+            this.width = w;
+            this.height = h;
+            this.canvas.style.width = w.toString() + "px";
+            this.canvas.style.height = h.toString() + "px";            
          }
       }
 
@@ -844,7 +847,7 @@ module ex {
       private initialize() {
          if (this.displayMode === DisplayMode.FullScreen || this.displayMode === DisplayMode.Container || this.displayMode === DisplayMode.Fill) {
 
-            var parent = <any>(this.displayMode === DisplayMode.Container || this.displayMode === DisplayMode.Fill
+            var parent = <any>(this.displayMode === DisplayMode.Container
                ? <any>(this.canvas.parentElement || document.body)
                : <any>window);
 

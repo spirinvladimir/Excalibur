@@ -33,7 +33,7 @@ module ex {
       }
 
       /**
-      * Sets the {{#crossLink Actor}}{{//crossLink}} to follow with the camera
+      * Sets the {{#crossLink Actor}}{{/crossLink}} to follow with the camera
       * @method setActorToFollow
       * @param actor {Actor} The actor to follow
       */
@@ -46,7 +46,7 @@ module ex {
       * @method getFocus
       * @returns Point
       */
-      public getFocus() {
+      public getFocus(fromScreen: boolean = false) {
          // this should always be overridden
          if (this.follow) {
             return new Point(0, 0);
@@ -216,10 +216,10 @@ module ex {
        * @method getFocus
        * @returns point
        */
-      getFocus() {
+      getFocus(fromScreen: boolean = false) {
          if (this.follow) {
             // return new Point(-this.follow.x + this.engine.width / 2.0, 0);
-            return new Point(((-this.follow.x - this.follow.getWidth()/2) * this.getZoom()) + (this.engine.getWidth() * this.getZoom()) / 2.0, 0);
+            return new Point((-(this.follow.getCenter().x / 2) * this.getZoom()) + (this.engine.getWidth() * this.getZoom()) / 2.0, 0);
          } else {
             return this.focus;
          }
@@ -243,10 +243,13 @@ module ex {
        * @method getFocus
        * @returns Point
        */
-      getFocus() {
+      getFocus(fromScreen: boolean = false) {
          if (this.follow) {
-            return new Point(((-this.follow.x - this.follow.getWidth() / 2) * this.getZoom()) + (this.engine.getWidth() * this.getZoom()) / 2.0, 
-                             ((-this.follow.y - this.follow.getHeight() / 2) * this.getZoom()) + (this.engine.getHeight() * this.getZoom()) / 2.0);
+            var w = fromScreen ? this.engine.getWidth() : this.engine.canvas.width,
+               h = fromScreen ? this.engine.getHeight() : this.engine.canvas.height;
+
+            return new Point((-this.follow.getCenter().x * this.getZoom()) + (w * this.getZoom()) / 2.0, 
+                             (-this.follow.getCenter().y * this.getZoom()) + (h * this.getZoom()) / 2.0);
             } else {
                return this.focus;
             }
