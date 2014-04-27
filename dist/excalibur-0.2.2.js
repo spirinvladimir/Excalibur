@@ -276,11 +276,6 @@ var ex;
         * @returns number
         */
         Ray.prototype.intersect = function (line) {
-            // Test if the ray starts on the line
-            if (this.pos.y === (line.getSlope().y / line.getSlope().x) * this.pos.x + line.begin.y) {
-                return 0;
-            }
-
             var numerator = line.begin.toVector().minus(this.pos.toVector());
 
             // Test is line and ray are parallel and non intersecting
@@ -288,6 +283,7 @@ var ex;
                 return -1;
             }
 
+            // Lines are parallel
             var divisor = (this.dir.cross(line.getSlope()));
             if (divisor === 0) {
                 return -1;
@@ -366,7 +362,11 @@ var ex;
 
         Projection.prototype.getOverlap = function (projection) {
             if (this.overlaps(projection)) {
-                return Math.min(this.max - projection.min, projection.max - this.min);
+                if (this.max > projection.max) {
+                    return projection.max - this.min;
+                } else {
+                    return this.max - projection.min;
+                }
             }
             return 0;
         };
@@ -1244,11 +1244,18 @@ var ex;
         * @param handler {GameEvent=>void} The handler callback to fire on this event
         */
         EventDispatcher.prototype.subscribe = function (eventName, handler) {
-            eventName = eventName.toLowerCase();
-            if (!this._handlers[eventName]) {
-                this._handlers[eventName] = [];
-            }
-            this._handlers[eventName].push(handler);
+            var _this = this;
+            var events = eventName.split(',').map(function (eventName) {
+                return eventName.toLowerCase().trim();
+            });
+
+            events.forEach(function (eventName) {
+                eventName = eventName.toLowerCase();
+                if (!_this._handlers[eventName]) {
+                    _this._handlers[eventName] = [];
+                }
+                _this._handlers[eventName].push(handler);
+            });
         };
 
         /**
@@ -1919,9 +1926,9 @@ var ex;
             var worldCoordsLowerRight = engine.screenToWorldCoordinates(new ex.Point(engine.width, engine.height));
 
             this._onScreenXStart = Math.max(Math.floor(worldCoordsUpperLeft.x / this.cellWidth) - 2, 0);
-            this._onScreenYStart = Math.max(Math.floor((worldCoordsUpperLeft.y - this.y) / this.cellHeight), 0);
-            this._onScreenXEnd = Math.max(Math.floor(worldCoordsLowerRight.x / this.cellWidth), 0);
-            this._onScreenYEnd = Math.max(Math.floor((worldCoordsLowerRight.y - this.y) / this.cellHeight) + 1, 0);
+            this._onScreenYStart = Math.max(Math.floor((worldCoordsUpperLeft.y - this.y) / this.cellHeight) - 2, 0);
+            this._onScreenXEnd = Math.max(Math.floor(worldCoordsLowerRight.x / this.cellWidth) + 2, 0);
+            this._onScreenYEnd = Math.max(Math.floor((worldCoordsLowerRight.y - this.y) / this.cellHeight) + 2, 0);
         };
 
         /**
@@ -1969,6 +1976,14 @@ var ex;
                 ctx.lineTo(this.x + width, this.y + y * this.cellHeight);
                 ctx.stroke();
             }
+            var solid = ex.Color.Red.clone();
+            solid.a = .3;
+            this.data.filter(function (cell) {
+                return cell.solid;
+            }).forEach(function (cell) {
+                ctx.fillStyle = solid.toString();
+                ctx.fillRect(cell.x, cell.y, cell.width, cell.height);
+            });
 
             if (this._collidingY > -1 && this._collidingX > -1) {
                 ctx.fillStyle = ex.Color.Cyan.toString();
@@ -2052,14 +2067,14 @@ var ex;
                 if (totalBoundingBox.getWidth() < other.getWidth() + this.getWidth() && totalBoundingBox.getHeight() < other.getHeight() + this.getHeight()) {
                     // collision
                     var overlapX = 0;
-                    if (this.right > other.left && this.right < other.right) {
+                    if (this.right >= other.left && this.right <= other.right) {
                         overlapX = other.left - this.right;
                     } else {
                         overlapX = other.right - this.left;
                     }
 
                     var overlapY = 0;
-                    if (this.top < other.bottom && this.top > other.top) {
+                    if (this.top <= other.bottom && this.top >= other.top) {
                         overlapY = other.bottom - this.top;
                     } else {
                         overlapY = other.top - this.bottom;
@@ -2071,6 +2086,9 @@ var ex;
             }
 
             return null;
+        };
+
+        BoundingBox.prototype.debugDraw = function (ctx) {
         };
         return BoundingBox;
     })();
@@ -2163,8 +2181,7 @@ var ex;
                 return accum;
             }, 0);
 
-            // Note: this only works for 4 sided shapes!
-            if (intersectCount >= 2) {
+            if (intersectCount % 2 === 0) {
                 return false;
             }
             return true;
@@ -2174,26 +2191,49 @@ var ex;
             if (collidable instanceof SATBoundingBox) {
                 var other = collidable;
                 var axes = this.getAxes();
-                axes = axes.concat(other.getAxes());
+                axes = other.getAxes().concat(axes);
                 var minOverlap = 99999;
                 var minAxis = null;
                 for (var i = 0; i < axes.length; i++) {
                     var proj1 = this.project(axes[i]);
                     var proj2 = other.project(axes[i]);
                     var overlap = proj1.getOverlap(proj2);
+
                     if (overlap === 0) {
-                        return;
+                        return null;
                     } else {
-                        if (overlap < minOverlap) {
+                        if (overlap <= minOverlap) {
                             minOverlap = overlap;
                             minAxis = axes[i];
                         }
                     }
                 }
-                return minAxis.normalize().scale(minOverlap);
+
+                if (minAxis) {
+                    return minAxis.normalize().scale(minOverlap);
+                } else {
+                    return null;
+                }
             }
 
             return null;
+        };
+
+        SATBoundingBox.prototype.debugDraw = function (ctx) {
+            ctx.beginPath();
+            ctx.lineWidth = 2;
+
+            // Iterate through the supplied points and contruct a 'polygon'
+            var firstPoint = this._points[0];
+            ctx.moveTo(firstPoint.x, firstPoint.y);
+            this._points.forEach(function (point) {
+                ctx.lineTo(point.x, point.y);
+            });
+            ctx.lineTo(firstPoint.x, firstPoint.y);
+            ctx.closePath();
+
+            ctx.strokeStyle = ex.Color.Blue.toString();
+            ctx.stroke();
         };
         return SATBoundingBox;
     })();
@@ -2667,7 +2707,7 @@ var ex;
             * By default all actors use the SeparatingAxis strategy.
             * @property collisionStrategy: {CollisionStrategy}
             */
-            this.collisionStrategy = 1 /* SeparatingAxis */;
+            this.collisionStrategy = 0 /* AxisAligned */;
             this.collisionGroups = [];
             this._collisionHandlers = {};
             this._isInitialized = false;
@@ -2935,10 +2975,10 @@ var ex;
             if (this.collisionStrategy === 1 /* SeparatingAxis */) {
                 var actorPos = new ex.Vector(this.x, this.y);
 
-                var topLeft = new ex.Point(0, 0);
-                var topRight = new ex.Point(this.getWidth(), 0);
-                var bottomRight = new ex.Point(this.getWidth(), this.getHeight());
-                var bottomLeft = new ex.Point(0, this.getHeight());
+                var topLeft = new ex.Point(0, 0).add(actorPos);
+                var topRight = new ex.Point(this.getWidth(), 0).add(actorPos);
+                var bottomRight = new ex.Point(this.getWidth(), this.getHeight()).add(actorPos);
+                var bottomLeft = new ex.Point(0, this.getHeight()).add(actorPos);
 
                 return new ex.SATBoundingBox([topLeft, topRight, bottomRight, bottomLeft]);
             } else {
@@ -2986,7 +3026,26 @@ var ex;
         * @returns Side
         */
         Actor.prototype.collidesWithSide = function (actor) {
-            return this.getSideFromIntersect(this.collides(actor));
+            var separationVector = this.collides(actor);
+            if (!separationVector) {
+                return 0 /* None */;
+            }
+
+            if (Math.abs(separationVector.x) > Math.abs(separationVector.y)) {
+                if (this.x < actor.x) {
+                    return 4 /* Right */;
+                } else {
+                    return 3 /* Left */;
+                }
+            } else {
+                if (this.y < actor.y) {
+                    return 2 /* Bottom */;
+                } else {
+                    return 1 /* Top */;
+                }
+            }
+
+            return 0 /* None */;
         };
 
         /**
@@ -3326,13 +3385,23 @@ var ex;
                                 });
                             }
                         });
+                        if (this.collisionType === 4 /* Fixed */ && collider.collisionType !== 1 /* Passive */) {
+                            // If you are fixed collision type move others out of your way
+                            collider.x -= intersectActor.x;
+                            collider.y -= intersectActor.y;
+                        }
 
                         // If the actor is active push the actor out if its not passive
                         if ((this.collisionType === 2 /* Active */ || this.collisionType === 3 /* Elastic */) && collider.collisionType !== 1 /* Passive */) {
-                            if (Math.abs(intersectActor.y) < Math.abs(intersectActor.x)) {
+                            if (this.collisionStrategy === 1 /* SeparatingAxis */) {
+                                this.x += intersectActor.x;
                                 this.y += intersectActor.y;
                             } else {
-                                this.x += intersectActor.x;
+                                if (Math.abs(intersectActor.y) < Math.abs(intersectActor.x)) {
+                                    this.y += intersectActor.y;
+                                } else {
+                                    this.x += intersectActor.x;
+                                }
                             }
 
                             // Naive elastic bounce
@@ -3355,7 +3424,7 @@ var ex;
                     var map = engine.currentScene.collisionMaps[j];
                     var intersectMap;
                     var side = 0 /* None */;
-                    var max = 2;
+                    var max = 5;
                     var hasBounced = false;
 
                     while (intersectMap = map.collides(this)) {
@@ -3365,7 +3434,7 @@ var ex;
                         }
                         side = this.getSideFromIntersect(intersectMap);
                         eventDispatcher.publish('collision', new ex.CollisionEvent(this, null, side, intersectMap));
-                        if ((this.collisionType === 2 /* Active */ || this.collisionType === 3 /* Elastic */)) {
+                        if (this.collisionType === 2 /* Active */ || this.collisionType === 3 /* Elastic */) {
                             //var intersectMap = map.getOverlap(this);
                             if (Math.abs(intersectMap.y) < Math.abs(intersectMap.x)) {
                                 this.y += intersectMap.y;
@@ -3474,8 +3543,6 @@ var ex;
 
             ctx.save();
             ctx.translate(this.x, this.y);
-            ctx.rotate(this.rotation);
-            ctx.scale(this.scaleX, this.scaleY);
 
             if (this.previousOpacity != this.opacity) {
                 for (var drawing in this.frames) {
@@ -3490,17 +3557,21 @@ var ex;
                     var xDiff = 0;
                     var yDiff = 0;
                     if (this.centerDrawingX) {
-                        xDiff = (this.currentDrawing.width * this.currentDrawing.getScaleX() - this.width) / 2;
+                        ctx.translate(this.getWidth() / 2, 0);
+
+                        xDiff = (this.currentDrawing.width / 2 * this.currentDrawing.getScaleX());
                     }
 
                     if (this.centerDrawingY) {
-                        yDiff = (this.currentDrawing.height * this.currentDrawing.getScaleY() - this.height) / 2;
+                        ctx.translate(0, this.getHeight() / 2);
+                        yDiff = (this.currentDrawing.height / 2 * this.currentDrawing.getScaleY());
                     }
 
-                    //var xDiff = (this.currentDrawing.width*this.currentDrawing.getScale() - this.width)/2;
-                    //var yDiff = (this.currentDrawing.height*this.currentDrawing.getScale() - this.height)/2;
+                    ctx.rotate(this.rotation);
                     this.currentDrawing.draw(ctx, -xDiff, -yDiff);
                 } else {
+                    ctx.rotate(this.rotation);
+                    ctx.scale(this.scaleX, this.scaleY);
                     if (this.color)
                         this.color.a = this.opacity;
                     ctx.fillStyle = this.color ? this.color.toString() : (new ex.Color(0, 0, 0)).toString();
@@ -3531,6 +3602,8 @@ var ex;
 
             this.sceneNode.debugDraw(ctx);
             ctx.restore();
+
+            this.getBounds().debugDraw(ctx);
         };
         return Actor;
     })(ex.Util.Class);
@@ -4654,9 +4727,11 @@ var ex;
                 };
 
                 ActionQueue.prototype.clearActions = function () {
-                    this._actions.length = 0;
-                    this._completedActions.length = 0;
-                    this._currentAction.stop();
+                    if (this._actions.length) {
+                        this._actions.length = 0;
+                        this._completedActions.length = 0;
+                        this._currentAction.stop();
+                    }
                 };
 
                 ActionQueue.prototype.getActions = function () {
@@ -6717,7 +6792,9 @@ var ex;
             var focus = this.getFocus();
             ctx.fillStyle = 'yellow';
             ctx.beginPath();
-            ctx.arc(this.follow.x + this.follow.getWidth() / 2, 0, 15, 0, Math.PI * 2);
+            if (this.follow) {
+                ctx.arc(this.follow.x + this.follow.getWidth() / 2, 0, 15, 0, Math.PI * 2);
+            }
             ctx.closePath();
             ctx.fill();
         };
@@ -7484,6 +7561,8 @@ var ex;
             this.progress = 0;
             this.total = 1;
             console.log("Powered by Excalibur.js visit", "http://excaliburjs.com", "for more information.");
+
+            this.camera = new ex.BaseCamera(this);
 
             this.logger = ex.Logger.getInstance();
 

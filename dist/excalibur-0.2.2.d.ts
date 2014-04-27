@@ -1219,6 +1219,7 @@ declare module ex {
         * @returns boolean
         */
         contains(point: Point): boolean;
+        debugDraw(ctx: CanvasRenderingContext2D): void;
     }
     /**
     * Axis Aligned collision primitive for Excalibur.
@@ -1263,6 +1264,7 @@ declare module ex {
         * @returns Vector
         */
         public collides(collidable: ICollidable): Vector;
+        public debugDraw(ctx: CanvasRenderingContext2D): void;
     }
     class SATBoundingBox implements ICollidable {
         private _points;
@@ -1291,6 +1293,7 @@ declare module ex {
         */
         public contains(p: Point): boolean;
         public collides(collidable: ICollidable): Vector;
+        public debugDraw(ctx: CanvasRenderingContext2D): void;
     }
 }
 declare module ex {
