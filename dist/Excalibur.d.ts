@@ -347,6 +347,514 @@ declare module ex {
         public log(level: LogLevel, args: any[]): void;
     }
 }
+declare module ex {
+    /**
+    * An enum representing all of the built in event types for Excalibur
+    * @class EventType
+    */
+    enum EventType {
+        /**
+        @property KeyDown {EventType}
+        @static
+        @final
+        */
+        /**
+        @property KeyUp {EventType}
+        @static
+        @final
+        */
+        /**
+        @property KeyPress {EventType}
+        @static
+        @final
+        */
+        /**
+        @property MouseDown {EventType}
+        @static
+        @final
+        */
+        /**
+        @property MouseMove {EventType}
+        @static
+        @final
+        */
+        /**
+        @property MouseUp {EventType}
+        @static
+        @final
+        */
+        /**
+        @property TouchStart {EventType}
+        @static
+        @final
+        */
+        /**
+        @property TouchMove {EventType}
+        @static
+        @final
+        */
+        /**
+        @property TouchEnd {EventType}
+        @static
+        @final
+        */
+        /**
+        @property TouchCancel {EventType}
+        @static
+        @final
+        */
+        /**
+        @property Click {EventType}
+        @static
+        @final
+        */
+        /**
+        @property UserEvent {EventType}
+        @static
+        @final
+        */
+        /**
+        @property Blur {EventType}
+        @static
+        @final
+        */
+        /**
+        @property Focus {EventType}
+        @static
+        @final
+        */
+        /**
+        @property Update {EventType}
+        @static
+        @final
+        */
+        /**
+        @property EnterViewPort {EventType}
+        @static
+        @final
+        */
+        /**
+        @property ExitViewPort {EventType}
+        @static
+        @final
+        */
+        /**
+        @property Activate {EventType}
+        @static
+        @final
+        */
+        /**
+        @property Deactivate {EventType}
+        @static
+        @final
+        */
+        /**
+        @property Initialize {EventType}
+        @static
+        @final
+        */
+        KeyDown = 0,
+        KeyUp = 1,
+        KeyPress = 2,
+        MouseDown = 3,
+        MouseMove = 4,
+        MouseUp = 5,
+        TouchStart = 6,
+        TouchMove = 7,
+        TouchEnd = 8,
+        TouchCancel = 9,
+        Click = 10,
+        Collision = 11,
+        EnterViewPort = 12,
+        ExitViewPort = 13,
+        Blur = 14,
+        Focus = 15,
+        Update = 16,
+        Activate = 17,
+        Deactivate = 18,
+        Initialize = 19,
+    }
+    /**
+    * Base event type in Excalibur that all other event types derive from.
+    *
+    * @class GameEvent
+    * @constructor
+    * @param target {any} Events can have target game object, like the Engine, or an Actor.
+    */
+    class GameEvent {
+        /**
+        * Target object for this event.
+        * @property target {any}
+        */
+        public target: any;
+        constructor();
+    }
+    /**
+    * Event received by the Engine when the browser window receives focus
+    *
+    * @class FocusEvent
+    * @extends GameEvent
+    * @constructor
+    */
+    class FocusEvent extends GameEvent {
+        constructor();
+    }
+    /**
+    * Event received by the Engine when the browser window is blurred
+    *
+    * @class BlurEvent
+    * @extends GameEvent
+    * @constructor
+    */
+    class BlurEvent extends GameEvent {
+        constructor();
+    }
+    /**
+    * Event thrown on an actor when a collision has occured
+    *
+    * @class CollisionEvent
+    * @extends GameEvent
+    * @constructor
+    * @param actor {Actor} The actor the event was thrown on
+    * @param other {Actor} The actor that was collided with
+    * @param side {Side} The side that was collided with
+    */
+    class CollisionEvent extends GameEvent {
+        public actor: Actor;
+        public other: Actor;
+        public side: Side;
+        public intersection: Vector;
+        constructor(actor: Actor, other: Actor, side: Side, intersection: Vector);
+    }
+    /**
+    * Event thrown on a game object on Excalibur update
+    *
+    * @class UpdateEvent
+    * @extends GameEvent
+    * @constructor
+    * @param delta {number} The number of milliseconds since the last update
+    */
+    class UpdateEvent extends GameEvent {
+        public delta: number;
+        constructor(delta: number);
+    }
+    /**
+    * Event thrown on an Actor only once before the first update call
+    *
+    * @class InitializeEvent
+    * @extends GameEvent
+    * @constructor
+    * @param engine {Engine} The reference to the current engine
+    */
+    class InitializeEvent extends GameEvent {
+        public engine: Engine;
+        constructor(engine: Engine);
+    }
+    /**
+    * Event thrown on a Scene on activation
+    *
+    * @class ActivateEvent
+    * @extends GameEvent
+    * @constructor
+    * @param oldScene {Scene} The reference to the old scene
+    */
+    class ActivateEvent extends GameEvent {
+        public oldScene: Scene;
+        constructor(oldScene: Scene);
+    }
+    /**
+    * Event thrown on a Scene on deactivation
+    *
+    * @class DeactivateEvent
+    * @extends GameEvent
+    * @constructor
+    * @param newScene {Scene} The reference to the new scene
+    */
+    class DeactivateEvent extends GameEvent {
+        public newScene: Scene;
+        constructor(newScene: Scene);
+    }
+    /**
+    * Event thrown on an Actor when it completely leaves the screen.
+    * @class ExitViewPortEvent
+    * @constructor
+    */
+    class ExitViewPortEvent extends GameEvent {
+        constructor();
+    }
+    /**
+    * Event thrown on an Actor when it completely leaves the screen.
+    * @class EnterViewPortEvent
+    * @constructor
+    */
+    class EnterViewPortEvent extends GameEvent {
+        constructor();
+    }
+    /**
+    * Event thrown on a game object on KeyEvent
+    *
+    * @class KeyEvent
+    * @extends GameEvent
+    * @constructor
+    * @param key {InputKey} The key responsible for throwing the event
+    */
+    class KeyEvent extends GameEvent {
+        public key: InputKey;
+        constructor(key: InputKey);
+    }
+    /**
+    * Event thrown on a game object on KeyDown
+    *
+    * @class KeyDown
+    * @extends GameEvent
+    * @constructor
+    * @param key {InputKey} The key responsible for throwing the event
+    */
+    class KeyDown extends GameEvent {
+        public key: InputKey;
+        constructor(key: InputKey);
+    }
+    /**
+    * Event thrown on a game object on KeyUp
+    *
+    * @class KeyUp
+    * @extends GameEvent
+    * @constructor
+    * @param key {InputKey} The key responsible for throwing the event
+    */
+    class KeyUp extends GameEvent {
+        public key: InputKey;
+        constructor(key: InputKey);
+    }
+    /**
+    * Event thrown on a game object on KeyPress
+    *
+    * @class KeyPress
+    * @extends GameEvent
+    * @constructor
+    * @param key {InputKey} The key responsible for throwing the event
+    */
+    class KeyPress extends GameEvent {
+        public key: InputKey;
+        constructor(key: InputKey);
+    }
+    /**
+    * Enum representing the different mouse buttons
+    * @class MouseButton
+    */
+    enum MouseButton {
+        /**
+        * @property Left
+        * @static
+        */
+        Left = 0,
+        /**
+        * @property Left
+        * @static
+        */
+        Middle = 1,
+        /**
+        * @property Left
+        * @static
+        */
+        Right = 2,
+    }
+    /**
+    * Event thrown on a game object on MouseDown
+    *
+    * @class MouseDown
+    * @extends GameEvent
+    * @constructor
+    * @param x {number} The x coordinate of the event
+    * @param y {number} The y coordinate of the event
+    * @param mouseEvent {MouseEvent} The native mouse event thrown
+    */
+    class MouseDown extends GameEvent {
+        public x: number;
+        public y: number;
+        public mouseEvent: MouseEvent;
+        constructor(x: number, y: number, mouseEvent: MouseEvent);
+    }
+    /**
+    * Event thrown on a game object on MouseMove
+    *
+    * @class MouseMove
+    * @extends GameEvent
+    * @constructor
+    * @param x {number} The x coordinate of the event
+    * @param y {number} The y coordinate of the event
+    * @param mouseEvent {MouseEvent} The native mouse event thrown
+    */
+    class MouseMove extends GameEvent {
+        public x: number;
+        public y: number;
+        public mouseEvent: MouseEvent;
+        constructor(x: number, y: number, mouseEvent: MouseEvent);
+    }
+    /**
+    * Event thrown on a game object on MouseUp
+    *
+    * @class MouseUp
+    * @extends GameEvent
+    * @constructor
+    * @param x {number} The x coordinate of the event
+    * @param y {number} The y coordinate of the event
+    * @param mouseEvent {MouseEvent} The native mouse event thrown
+    */
+    class MouseUp extends GameEvent {
+        public x: number;
+        public y: number;
+        public mouseEvent: MouseEvent;
+        constructor(x: number, y: number, mouseEvent: MouseEvent);
+    }
+    interface Touch {
+        identifier: string;
+        screenX: number;
+        screenY: number;
+        clientX: number;
+        clientY: number;
+        pageX: number;
+        pageY: number;
+        radiusX: number;
+        radiusY: number;
+        rotationAngle: number;
+        force: number;
+        target: Element;
+    }
+    /**
+    * Event thrown on a game object on TouchEvent
+    *
+    * @class TouchEvent
+    * @extends GameEvent
+    * @constructor
+    * @param x {number} The x coordinate of the event
+    * @param y {number} The y coordinate of the event
+    */
+    interface TouchEvent extends Event {
+        altKey: boolean;
+        changedTouches: Touch[];
+        ctrlKey: boolean;
+        metaKey: boolean;
+        shiftKey: boolean;
+        targetTouches: Touch[];
+        touches: Touch[];
+        type: string;
+        target: Element;
+    }
+    /**
+    * Event thrown on a game object on TouchStart
+    *
+    * @class TouchStart
+    * @extends GameEvent
+    * @constructor
+    * @param x {number} The x coordinate of the event
+    * @param y {number} The y coordinate of the event
+    */
+    class TouchStart extends GameEvent {
+        public x: number;
+        public y: number;
+        constructor(x: number, y: number);
+    }
+    /**
+    * Event thrown on a game object on TouchMove
+    *
+    * @class TouchMove
+    * @extends GameEvent
+    * @constructor
+    * @param x {number} The x coordinate of the event
+    * @param y {number} The y coordinate of the event
+    */
+    class TouchMove extends GameEvent {
+        public x: number;
+        public y: number;
+        constructor(x: number, y: number);
+    }
+    /**
+    * Event thrown on a game object on TouchEnd
+    *
+    * @class TouchEnd
+    * @extends GameEvent
+    * @constructor
+    * @param x {number} The x coordinate of the event
+    * @param y {number} The y coordinate of the event
+    */
+    class TouchEnd extends GameEvent {
+        public x: number;
+        public y: number;
+        constructor(x: number, y: number);
+    }
+    /**
+    * Event thrown on a game object on TouchCancel
+    *
+    * @class TouchCancel
+    * @extends GameEvent
+    * @constructor
+    * @param x {number} The x coordinate of the event
+    * @param y {number} The y coordinate of the event
+    */
+    class TouchCancel extends GameEvent {
+        public x: number;
+        public y: number;
+        constructor(x: number, y: number);
+    }
+    /**
+    * Event thrown on a game object on Click
+    *
+    * @class Click
+    * @extends GameEvent
+    * @constructor
+    * @param x {number} The x coordinate of the event
+    * @param y {number} The y coordinate of the event
+    */
+    class Click extends GameEvent {
+        public x: number;
+        public y: number;
+        public mouseEvent: MouseEvent;
+        constructor(x: number, y: number, mouseEvent: MouseEvent);
+    }
+    /**
+    * Excalibur's internal queueing event dispatcher. Callbacks are queued up and not fired until the update is called.
+    * @class EventDispatcher
+    * @constructor
+    * @param target {any} The object that will be the recipient of events from this event dispatcher
+    */
+    class EventDispatcher {
+        private _handlers;
+        private queue;
+        private target;
+        private log;
+        constructor(target: any);
+        /**
+        * Publish an event for target
+        * @method publish
+        * @param eventName {string} The name of the event to publish
+        * @param [event=undefined] {GameEvent} Optionally pass an event data object to the handler
+        */
+        public publish(eventName: string, event?: GameEvent): void;
+        /**
+        * Subscribe an event handler to a particular event name, multiple handlers per event name are allowed.
+        * @method subscribe
+        * @param eventName {string} The name of the event to subscribe to
+        * @param handler {GameEvent=>void} The handler callback to fire on this event
+        */
+        public subscribe(eventName: string, handler: (event?: GameEvent) => void): void;
+        /**
+        * Unsubscribe a event handler(s) from an event. If a specific handler
+        * is specified for an event, only that handler will be unsubscribed.
+        * Otherwise all handlers will be unsubscribed for that event.
+        * @method unsubscribe
+        * @param eventName {string} The name of the event to unsubscribe
+        * @param [handler=undefined] Optionally the specific handler to unsubscribe
+        *
+        */
+        public unsubscribe(eventName: string, handler?: (event?: GameEvent) => void): void;
+        /**
+        * Dispatches all queued events to their handlers for execution.
+        * @method update
+        */
+        public update(): void;
+    }
+}
 declare module ex.Util {
     /**
     * Excalibur base class
@@ -1693,512 +2201,273 @@ declare module ex {
         public debugDraw(ctx: CanvasRenderingContext2D): void;
     }
 }
-declare module ex {
-    /**
-    * An enum representing all of the built in event types for Excalibur
-    * @class EventType
-    */
-    enum EventType {
-        /**
-        @property KeyDown {EventType}
-        @static
-        @final
-        */
-        /**
-        @property KeyUp {EventType}
-        @static
-        @final
-        */
-        /**
-        @property KeyPress {EventType}
-        @static
-        @final
-        */
-        /**
-        @property MouseDown {EventType}
-        @static
-        @final
-        */
-        /**
-        @property MouseMove {EventType}
-        @static
-        @final
-        */
-        /**
-        @property MouseUp {EventType}
-        @static
-        @final
-        */
-        /**
-        @property TouchStart {EventType}
-        @static
-        @final
-        */
-        /**
-        @property TouchMove {EventType}
-        @static
-        @final
-        */
-        /**
-        @property TouchEnd {EventType}
-        @static
-        @final
-        */
-        /**
-        @property TouchCancel {EventType}
-        @static
-        @final
-        */
-        /**
-        @property Click {EventType}
-        @static
-        @final
-        */
-        /**
-        @property UserEvent {EventType}
-        @static
-        @final
-        */
-        /**
-        @property Blur {EventType}
-        @static
-        @final
-        */
-        /**
-        @property Focus {EventType}
-        @static
-        @final
-        */
-        /**
-        @property Update {EventType}
-        @static
-        @final
-        */
-        /**
-        @property EnterViewPort {EventType}
-        @static
-        @final
-        */
-        /**
-        @property ExitViewPort {EventType}
-        @static
-        @final
-        */
-        /**
-        @property Activate {EventType}
-        @static
-        @final
-        */
-        /**
-        @property Deactivate {EventType}
-        @static
-        @final
-        */
-        /**
-        @property Initialize {EventType}
-        @static
-        @final
-        */
-        KeyDown = 0,
-        KeyUp = 1,
-        KeyPress = 2,
-        MouseDown = 3,
-        MouseMove = 4,
-        MouseUp = 5,
-        TouchStart = 6,
-        TouchMove = 7,
-        TouchEnd = 8,
-        TouchCancel = 9,
-        Click = 10,
-        Collision = 11,
-        EnterViewPort = 12,
-        ExitViewPort = 13,
-        Blur = 14,
-        Focus = 15,
-        Update = 16,
-        Activate = 17,
-        Deactivate = 18,
-        Initialize = 19,
+declare module ex.Internal.Actions {
+    interface IAction {
+        x: number;
+        y: number;
+        update(delta: number): void;
+        isComplete(actor: Actor): boolean;
+        reset(): void;
+        stop(): void;
     }
-    /**
-    * Base event type in Excalibur that all other event types derive from.
-    *
-    * @class GameEvent
-    * @constructor
-    * @param target {any} Events can have target game object, like the Engine, or an Actor.
-    */
-    class GameEvent {
-        /**
-        * Target object for this event.
-        * @property target {any}
-        */
-        public target: any;
-        constructor();
-    }
-    /**
-    * Event received by the Engine when the browser window receives focus
-    *
-    * @class FocusEvent
-    * @extends GameEvent
-    * @constructor
-    */
-    class FocusEvent extends GameEvent {
-        constructor();
-    }
-    /**
-    * Event received by the Engine when the browser window is blurred
-    *
-    * @class BlurEvent
-    * @extends GameEvent
-    * @constructor
-    */
-    class BlurEvent extends GameEvent {
-        constructor();
-    }
-    /**
-    * Event thrown on an actor when a collision has occured
-    *
-    * @class CollisionEvent
-    * @extends GameEvent
-    * @constructor
-    * @param actor {Actor} The actor the event was thrown on
-    * @param other {Actor} The actor that was collided with
-    * @param side {Side} The side that was collided with
-    */
-    class CollisionEvent extends GameEvent {
-        public actor: Actor;
-        public other: Actor;
-        public side: Side;
-        public intersection: Vector;
-        constructor(actor: Actor, other: Actor, side: Side, intersection: Vector);
-    }
-    /**
-    * Event thrown on a game object on Excalibur update
-    *
-    * @class UpdateEvent
-    * @extends GameEvent
-    * @constructor
-    * @param delta {number} The number of milliseconds since the last update
-    */
-    class UpdateEvent extends GameEvent {
-        public delta: number;
-        constructor(delta: number);
-    }
-    /**
-    * Event thrown on an Actor only once before the first update call
-    *
-    * @class InitializeEvent
-    * @extends GameEvent
-    * @constructor
-    * @param engine {Engine} The reference to the current engine
-    */
-    class InitializeEvent extends GameEvent {
-        public engine: Engine;
-        constructor(engine: Engine);
-    }
-    /**
-    * Event thrown on a Scene on activation
-    *
-    * @class ActivateEvent
-    * @extends GameEvent
-    * @constructor
-    * @param oldScene {Scene} The reference to the old scene
-    */
-    class ActivateEvent extends GameEvent {
-        public oldScene: Scene;
-        constructor(oldScene: Scene);
-    }
-    /**
-    * Event thrown on a Scene on deactivation
-    *
-    * @class DeactivateEvent
-    * @extends GameEvent
-    * @constructor
-    * @param newScene {Scene} The reference to the new scene
-    */
-    class DeactivateEvent extends GameEvent {
-        public newScene: Scene;
-        constructor(newScene: Scene);
-    }
-    /**
-    * Event thrown on an Actor when it completely leaves the screen.
-    * @class ExitViewPortEvent
-    * @constructor
-    */
-    class ExitViewPortEvent extends GameEvent {
-        constructor();
-    }
-    /**
-    * Event thrown on an Actor when it completely leaves the screen.
-    * @class EnterViewPortEvent
-    * @constructor
-    */
-    class EnterViewPortEvent extends GameEvent {
-        constructor();
-    }
-    /**
-    * Event thrown on a game object on KeyEvent
-    *
-    * @class KeyEvent
-    * @extends GameEvent
-    * @constructor
-    * @param key {InputKey} The key responsible for throwing the event
-    */
-    class KeyEvent extends GameEvent {
-        public key: InputKey;
-        constructor(key: InputKey);
-    }
-    /**
-    * Event thrown on a game object on KeyDown
-    *
-    * @class KeyDown
-    * @extends GameEvent
-    * @constructor
-    * @param key {InputKey} The key responsible for throwing the event
-    */
-    class KeyDown extends GameEvent {
-        public key: InputKey;
-        constructor(key: InputKey);
-    }
-    /**
-    * Event thrown on a game object on KeyUp
-    *
-    * @class KeyUp
-    * @extends GameEvent
-    * @constructor
-    * @param key {InputKey} The key responsible for throwing the event
-    */
-    class KeyUp extends GameEvent {
-        public key: InputKey;
-        constructor(key: InputKey);
-    }
-    /**
-    * Event thrown on a game object on KeyPress
-    *
-    * @class KeyPress
-    * @extends GameEvent
-    * @constructor
-    * @param key {InputKey} The key responsible for throwing the event
-    */
-    class KeyPress extends GameEvent {
-        public key: InputKey;
-        constructor(key: InputKey);
-    }
-    /**
-    * Enum representing the different mouse buttons
-    * @class MouseButton
-    */
-    enum MouseButton {
-        /**
-        * @property Left
-        * @static
-        */
-        Left = 0,
-        /**
-        * @property Left
-        * @static
-        */
-        Middle = 1,
-        /**
-        * @property Left
-        * @static
-        */
-        Right = 2,
-    }
-    /**
-    * Event thrown on a game object on MouseDown
-    *
-    * @class MouseDown
-    * @extends GameEvent
-    * @constructor
-    * @param x {number} The x coordinate of the event
-    * @param y {number} The y coordinate of the event
-    * @param mouseEvent {MouseEvent} The native mouse event thrown
-    */
-    class MouseDown extends GameEvent {
+    class MoveTo implements IAction {
+        private actor;
         public x: number;
         public y: number;
-        public mouseEvent: MouseEvent;
-        constructor(x: number, y: number, mouseEvent: MouseEvent);
+        private start;
+        private end;
+        private dir;
+        private speed;
+        private distance;
+        private _started;
+        private _stopped;
+        constructor(actor: Actor, destx: number, desty: number, speed: number);
+        public update(delta: number): void;
+        public isComplete(actor: Actor): boolean;
+        public stop(): void;
+        public reset(): void;
     }
-    /**
-    * Event thrown on a game object on MouseMove
-    *
-    * @class MouseMove
-    * @extends GameEvent
-    * @constructor
-    * @param x {number} The x coordinate of the event
-    * @param y {number} The y coordinate of the event
-    * @param mouseEvent {MouseEvent} The native mouse event thrown
-    */
-    class MouseMove extends GameEvent {
+    class MoveBy implements IAction {
+        private actor;
         public x: number;
         public y: number;
-        public mouseEvent: MouseEvent;
-        constructor(x: number, y: number, mouseEvent: MouseEvent);
+        private distance;
+        private speed;
+        private time;
+        private start;
+        private end;
+        private dir;
+        private _started;
+        private _stopped;
+        constructor(actor: Actor, destx: number, desty: number, time: number);
+        public update(delta: Number): void;
+        public isComplete(actor: Actor): boolean;
+        public stop(): void;
+        public reset(): void;
     }
-    /**
-    * Event thrown on a game object on MouseUp
-    *
-    * @class MouseUp
-    * @extends GameEvent
-    * @constructor
-    * @param x {number} The x coordinate of the event
-    * @param y {number} The y coordinate of the event
-    * @param mouseEvent {MouseEvent} The native mouse event thrown
-    */
-    class MouseUp extends GameEvent {
+    class Follow implements IAction {
+        private actor;
+        private actorToFollow;
         public x: number;
         public y: number;
-        public mouseEvent: MouseEvent;
-        constructor(x: number, y: number, mouseEvent: MouseEvent);
+        private current;
+        private end;
+        private dir;
+        private speed;
+        private maximumDistance;
+        private distanceBetween;
+        private _started;
+        private _stopped;
+        constructor(actor: Actor, actorToFollow: Actor, followDistance?: number);
+        public update(delta: number): void;
+        public stop(): void;
+        public isComplete(actor: Actor): boolean;
+        public reset(): void;
     }
-    interface Touch {
-        identifier: string;
-        screenX: number;
-        screenY: number;
-        clientX: number;
-        clientY: number;
-        pageX: number;
-        pageY: number;
-        radiusX: number;
-        radiusY: number;
-        rotationAngle: number;
-        force: number;
-        target: Element;
-    }
-    /**
-    * Event thrown on a game object on TouchEvent
-    *
-    * @class TouchEvent
-    * @extends GameEvent
-    * @constructor
-    * @param x {number} The x coordinate of the event
-    * @param y {number} The y coordinate of the event
-    */
-    interface TouchEvent extends Event {
-        altKey: boolean;
-        changedTouches: Touch[];
-        ctrlKey: boolean;
-        metaKey: boolean;
-        shiftKey: boolean;
-        targetTouches: Touch[];
-        touches: Touch[];
-        type: string;
-        target: Element;
-    }
-    /**
-    * Event thrown on a game object on TouchStart
-    *
-    * @class TouchStart
-    * @extends GameEvent
-    * @constructor
-    * @param x {number} The x coordinate of the event
-    * @param y {number} The y coordinate of the event
-    */
-    class TouchStart extends GameEvent {
+    class Meet implements IAction {
+        private actor;
+        private actorToMeet;
         public x: number;
         public y: number;
-        constructor(x: number, y: number);
+        private current;
+        private end;
+        private dir;
+        private speed;
+        private distanceBetween;
+        private _started;
+        private _stopped;
+        private _speedWasSpecified;
+        constructor(actor: Actor, actorToMeet: Actor, speed?: number);
+        public update(delta: number): void;
+        public isComplete(actor: Actor): boolean;
+        public stop(): void;
+        public reset(): void;
     }
-    /**
-    * Event thrown on a game object on TouchMove
-    *
-    * @class TouchMove
-    * @extends GameEvent
-    * @constructor
-    * @param x {number} The x coordinate of the event
-    * @param y {number} The y coordinate of the event
-    */
-    class TouchMove extends GameEvent {
+    class RotateTo implements IAction {
+        private actor;
         public x: number;
         public y: number;
-        constructor(x: number, y: number);
+        private start;
+        private end;
+        private speed;
+        private distance;
+        private _started;
+        private _stopped;
+        constructor(actor: Actor, angleRadians: number, speed: number);
+        public update(delta: number): void;
+        public isComplete(actor: Actor): boolean;
+        public stop(): void;
+        public reset(): void;
     }
-    /**
-    * Event thrown on a game object on TouchEnd
-    *
-    * @class TouchEnd
-    * @extends GameEvent
-    * @constructor
-    * @param x {number} The x coordinate of the event
-    * @param y {number} The y coordinate of the event
-    */
-    class TouchEnd extends GameEvent {
+    class RotateBy implements IAction {
+        private actor;
         public x: number;
         public y: number;
-        constructor(x: number, y: number);
+        private start;
+        private end;
+        private time;
+        private distance;
+        private _started;
+        private _stopped;
+        private speed;
+        constructor(actor: Actor, angleRadians: number, time: number);
+        public update(delta: number): void;
+        public isComplete(actor: Actor): boolean;
+        public stop(): void;
+        public reset(): void;
     }
-    /**
-    * Event thrown on a game object on TouchCancel
-    *
-    * @class TouchCancel
-    * @extends GameEvent
-    * @constructor
-    * @param x {number} The x coordinate of the event
-    * @param y {number} The y coordinate of the event
-    */
-    class TouchCancel extends GameEvent {
+    class ScaleTo implements IAction {
+        private actor;
         public x: number;
         public y: number;
-        constructor(x: number, y: number);
+        private startX;
+        private startY;
+        private endX;
+        private endY;
+        private speedX;
+        private speedY;
+        private distanceX;
+        private distanceY;
+        private _started;
+        private _stopped;
+        constructor(actor: Actor, scaleX: number, scaleY: number, speedX: number, speedY: number);
+        public update(delta: number): void;
+        public isComplete(actor: Actor): boolean;
+        public stop(): void;
+        public reset(): void;
     }
-    /**
-    * Event thrown on a game object on Click
-    *
-    * @class Click
-    * @extends GameEvent
-    * @constructor
-    * @param x {number} The x coordinate of the event
-    * @param y {number} The y coordinate of the event
-    */
-    class Click extends GameEvent {
+    class ScaleBy implements IAction {
+        private actor;
         public x: number;
         public y: number;
-        public mouseEvent: MouseEvent;
-        constructor(x: number, y: number, mouseEvent: MouseEvent);
+        private startX;
+        private startY;
+        private endX;
+        private endY;
+        private time;
+        private distanceX;
+        private distanceY;
+        private _started;
+        private _stopped;
+        private speedX;
+        private speedY;
+        constructor(actor: Actor, scaleX: number, scaleY: number, time: number);
+        public update(delta: number): void;
+        public isComplete(actor: Actor): boolean;
+        public stop(): void;
+        public reset(): void;
     }
-    /**
-    * Excalibur's internal queueing event dispatcher. Callbacks are queued up and not fired until the update is called.
-    * @class EventDispatcher
-    * @constructor
-    * @param target {any} The object that will be the recipient of events from this event dispatcher
-    */
-    class EventDispatcher {
-        private _handlers;
-        private queue;
-        private target;
-        private log;
-        constructor(target: any);
-        /**
-        * Publish an event for target
-        * @method publish
-        * @param eventName {string} The name of the event to publish
-        * @param [event=undefined] {GameEvent} Optionally pass an event data object to the handler
-        */
-        public publish(eventName: string, event?: GameEvent): void;
-        /**
-        * Subscribe an event handler to a particular event name, multiple handlers per event name are allowed.
-        * @method subscribe
-        * @param eventName {string} The name of the event to subscribe to
-        * @param handler {GameEvent=>void} The handler callback to fire on this event
-        */
-        public subscribe(eventName: string, handler: (event?: GameEvent) => void): void;
-        /**
-        * Unsubscribe a event handler(s) from an event. If a specific handler
-        * is specified for an event, only that handler will be unsubscribed.
-        * Otherwise all handlers will be unsubscribed for that event.
-        * @method unsubscribe
-        * @param eventName {string} The name of the event to unsubscribe
-        * @param [handler=undefined] Optionally the specific handler to unsubscribe
-        *
-        */
-        public unsubscribe(eventName: string, handler?: (event?: GameEvent) => void): void;
-        /**
-        * Dispatches all queued events to their handlers for execution.
-        * @method update
-        */
-        public update(): void;
+    class Delay implements IAction {
+        public x: number;
+        public y: number;
+        private actor;
+        private elapsedTime;
+        private delay;
+        private _started;
+        private _stopped;
+        constructor(actor: Actor, delay: number);
+        public update(delta: number): void;
+        public isComplete(actor: Actor): boolean;
+        public stop(): void;
+        public reset(): void;
+    }
+    class Blink implements IAction {
+        public x: number;
+        public y: number;
+        private frequency;
+        private duration;
+        private actor;
+        private numBlinks;
+        private blinkTime;
+        private _started;
+        private nextBlink;
+        private elapsedTime;
+        private isBlinking;
+        private _stopped;
+        constructor(actor: Actor, frequency: number, duration: number, blinkTime?: number);
+        public update(delta: any): void;
+        public isComplete(actor: Actor): boolean;
+        public stop(): void;
+        public reset(): void;
+    }
+    class Fade implements IAction {
+        public x: number;
+        public y: number;
+        private actor;
+        private endOpacity;
+        private speed;
+        private multiplyer;
+        private _started;
+        private _stopped;
+        constructor(actor: Actor, endOpacity: number, speed: number);
+        public update(delta: number): void;
+        public isComplete(actor: Actor): boolean;
+        public stop(): void;
+        public reset(): void;
+    }
+    class Die implements IAction {
+        public x: number;
+        public y: number;
+        private actor;
+        private _started;
+        private _stopped;
+        constructor(actor: Actor);
+        public update(delta: number): void;
+        public isComplete(): boolean;
+        public stop(): void;
+        public reset(): void;
+    }
+    class CallMethod implements IAction {
+        public x: number;
+        public y: number;
+        private _method;
+        private _actor;
+        private _hasBeenCalled;
+        constructor(actor: Actor, method: () => any);
+        public update(delta: number): void;
+        public isComplete(actor: Actor): boolean;
+        public reset(): void;
+        public stop(): void;
+    }
+    class Repeat implements IAction {
+        public x: number;
+        public y: number;
+        private actor;
+        private actionQueue;
+        private repeat;
+        private originalRepeat;
+        private _stopped;
+        constructor(actor: Actor, repeat: number, actions: IAction[]);
+        public update(delta: any): void;
+        public isComplete(): boolean;
+        public stop(): void;
+        public reset(): void;
+    }
+    class RepeatForever implements IAction {
+        public x: number;
+        public y: number;
+        private actor;
+        private actionQueue;
+        private _stopped;
+        constructor(actor: Actor, actions: IAction[]);
+        public update(delta: any): void;
+        public isComplete(): boolean;
+        public stop(): void;
+        public reset(): void;
+    }
+    class ActionQueue {
+        private actor;
+        private _actions;
+        private _currentAction;
+        private _completedActions;
+        constructor(actor: Actor);
+        public add(action: IAction): void;
+        public remove(action: IAction): void;
+        public clearActions(): void;
+        public getActions(): IAction[];
+        public hasNext(): boolean;
+        public reset(): void;
+        public update(delta: number): void;
     }
 }
 declare module ex {
@@ -4066,274 +4335,5 @@ declare module ex {
         * @param loader {ILoadable} Some loadable such as a Loader collection, Sound, or Texture.
         */
         public load(loader: ILoadable): Promise<any>;
-    }
-}
-declare module ex.Internal.Actions {
-    interface IAction {
-        x: number;
-        y: number;
-        update(delta: number): void;
-        isComplete(actor: Actor): boolean;
-        reset(): void;
-        stop(): void;
-    }
-    class MoveTo implements IAction {
-        private actor;
-        public x: number;
-        public y: number;
-        private start;
-        private end;
-        private dir;
-        private speed;
-        private distance;
-        private _started;
-        private _stopped;
-        constructor(actor: Actor, destx: number, desty: number, speed: number);
-        public update(delta: number): void;
-        public isComplete(actor: Actor): boolean;
-        public stop(): void;
-        public reset(): void;
-    }
-    class MoveBy implements IAction {
-        private actor;
-        public x: number;
-        public y: number;
-        private distance;
-        private speed;
-        private time;
-        private start;
-        private end;
-        private dir;
-        private _started;
-        private _stopped;
-        constructor(actor: Actor, destx: number, desty: number, time: number);
-        public update(delta: Number): void;
-        public isComplete(actor: Actor): boolean;
-        public stop(): void;
-        public reset(): void;
-    }
-    class Follow implements IAction {
-        private actor;
-        private actorToFollow;
-        public x: number;
-        public y: number;
-        private current;
-        private end;
-        private dir;
-        private speed;
-        private maximumDistance;
-        private distanceBetween;
-        private _started;
-        private _stopped;
-        constructor(actor: Actor, actorToFollow: Actor, followDistance?: number);
-        public update(delta: number): void;
-        public stop(): void;
-        public isComplete(actor: Actor): boolean;
-        public reset(): void;
-    }
-    class Meet implements IAction {
-        private actor;
-        private actorToMeet;
-        public x: number;
-        public y: number;
-        private current;
-        private end;
-        private dir;
-        private speed;
-        private distanceBetween;
-        private _started;
-        private _stopped;
-        private _speedWasSpecified;
-        constructor(actor: Actor, actorToMeet: Actor, speed?: number);
-        public update(delta: number): void;
-        public isComplete(actor: Actor): boolean;
-        public stop(): void;
-        public reset(): void;
-    }
-    class RotateTo implements IAction {
-        private actor;
-        public x: number;
-        public y: number;
-        private start;
-        private end;
-        private speed;
-        private distance;
-        private _started;
-        private _stopped;
-        constructor(actor: Actor, angleRadians: number, speed: number);
-        public update(delta: number): void;
-        public isComplete(actor: Actor): boolean;
-        public stop(): void;
-        public reset(): void;
-    }
-    class RotateBy implements IAction {
-        private actor;
-        public x: number;
-        public y: number;
-        private start;
-        private end;
-        private time;
-        private distance;
-        private _started;
-        private _stopped;
-        private speed;
-        constructor(actor: Actor, angleRadians: number, time: number);
-        public update(delta: number): void;
-        public isComplete(actor: Actor): boolean;
-        public stop(): void;
-        public reset(): void;
-    }
-    class ScaleTo implements IAction {
-        private actor;
-        public x: number;
-        public y: number;
-        private startX;
-        private startY;
-        private endX;
-        private endY;
-        private speedX;
-        private speedY;
-        private distanceX;
-        private distanceY;
-        private _started;
-        private _stopped;
-        constructor(actor: Actor, scaleX: number, scaleY: number, speedX: number, speedY: number);
-        public update(delta: number): void;
-        public isComplete(actor: Actor): boolean;
-        public stop(): void;
-        public reset(): void;
-    }
-    class ScaleBy implements IAction {
-        private actor;
-        public x: number;
-        public y: number;
-        private startX;
-        private startY;
-        private endX;
-        private endY;
-        private time;
-        private distanceX;
-        private distanceY;
-        private _started;
-        private _stopped;
-        private speedX;
-        private speedY;
-        constructor(actor: Actor, scaleX: number, scaleY: number, time: number);
-        public update(delta: number): void;
-        public isComplete(actor: Actor): boolean;
-        public stop(): void;
-        public reset(): void;
-    }
-    class Delay implements IAction {
-        public x: number;
-        public y: number;
-        private actor;
-        private elapsedTime;
-        private delay;
-        private _started;
-        private _stopped;
-        constructor(actor: Actor, delay: number);
-        public update(delta: number): void;
-        public isComplete(actor: Actor): boolean;
-        public stop(): void;
-        public reset(): void;
-    }
-    class Blink implements IAction {
-        public x: number;
-        public y: number;
-        private frequency;
-        private duration;
-        private actor;
-        private numBlinks;
-        private blinkTime;
-        private _started;
-        private nextBlink;
-        private elapsedTime;
-        private isBlinking;
-        private _stopped;
-        constructor(actor: Actor, frequency: number, duration: number, blinkTime?: number);
-        public update(delta: any): void;
-        public isComplete(actor: Actor): boolean;
-        public stop(): void;
-        public reset(): void;
-    }
-    class Fade implements IAction {
-        public x: number;
-        public y: number;
-        private actor;
-        private endOpacity;
-        private speed;
-        private multiplyer;
-        private _started;
-        private _stopped;
-        constructor(actor: Actor, endOpacity: number, speed: number);
-        public update(delta: number): void;
-        public isComplete(actor: Actor): boolean;
-        public stop(): void;
-        public reset(): void;
-    }
-    class Die implements IAction {
-        public x: number;
-        public y: number;
-        private actor;
-        private _started;
-        private _stopped;
-        constructor(actor: Actor);
-        public update(delta: number): void;
-        public isComplete(): boolean;
-        public stop(): void;
-        public reset(): void;
-    }
-    class CallMethod implements IAction {
-        public x: number;
-        public y: number;
-        private _method;
-        private _actor;
-        private _hasBeenCalled;
-        constructor(actor: Actor, method: () => any);
-        public update(delta: number): void;
-        public isComplete(actor: Actor): boolean;
-        public reset(): void;
-        public stop(): void;
-    }
-    class Repeat implements IAction {
-        public x: number;
-        public y: number;
-        private actor;
-        private actionQueue;
-        private repeat;
-        private originalRepeat;
-        private _stopped;
-        constructor(actor: Actor, repeat: number, actions: IAction[]);
-        public update(delta: any): void;
-        public isComplete(): boolean;
-        public stop(): void;
-        public reset(): void;
-    }
-    class RepeatForever implements IAction {
-        public x: number;
-        public y: number;
-        private actor;
-        private actionQueue;
-        private _stopped;
-        constructor(actor: Actor, actions: IAction[]);
-        public update(delta: any): void;
-        public isComplete(): boolean;
-        public stop(): void;
-        public reset(): void;
-    }
-    class ActionQueue {
-        private actor;
-        private _actions;
-        private _currentAction;
-        private _completedActions;
-        constructor(actor: Actor);
-        public add(action: IAction): void;
-        public remove(action: IAction): void;
-        public clearActions(): void;
-        public getActions(): IAction[];
-        public hasNext(): boolean;
-        public reset(): void;
-        public update(delta: number): void;
     }
 }
