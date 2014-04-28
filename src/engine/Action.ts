@@ -275,30 +275,53 @@ module ex.Internal.Actions {
       }
    }
 
+   export enum RotationStrategy {
+      Clockwise,
+      CounterClockwise,
+      ShortestPath
+   }
+
    export class RotateTo implements IAction {
       private actor: Actor;
       public x: number;
       public y: number;
-      private start: number;
       private end: number;
       private speed: number;
       private distance: number;
       private _started = false;
       private _stopped = false;
-      constructor(actor: Actor, angleRadians: number, speed: number) {
+      private _rotationStrategy = RotationStrategy.ShortestPath;
+      private _traveled = 0;
+      
+      constructor(actor: Actor, angleRadians: number, speed: number, rotationStrategy:RotationStrategy = RotationStrategy.ShortestPath) {
          this.actor = actor;
-         this.end = angleRadians;
-         this.speed = speed;
+         
+         this.end = Util.canonicalizeAngle(angleRadians);
+         this.speed = Math.abs(speed);
+         this._rotationStrategy = rotationStrategy;
 
       }
 
       public update(delta: number): void {
          if (!this._started) {
             this._started = true;
-            this.start = this.actor.rotation;
-            this.distance = Math.abs(this.end - this.start);
+            this.actor.rotation = Util.canonicalizeAngle(this.actor.rotation);
+            this.distance = this.end - this.actor.rotation;
+            if (this._rotationStrategy === RotationStrategy.ShortestPath) {
+               var clockwise = (this.distance);
+               if (clockwise > 0) { // ???? wut ;___;
+                  this.speed = 1 * Math.abs(this.speed);
+               } else {
+                  this.speed = -1 * Math.abs(this.speed);
+               }
+            } else if (this._rotationStrategy === RotationStrategy.Clockwise) {
+               this.speed = 1 * Math.abs(this.speed);
+            } else if (this._rotationStrategy === RotationStrategy.CounterClockwise) {
+               this.speed = -1 * Math.abs(this.speed);
+            }
          }
          this.actor.rx = this.speed;
+         this._traveled += Math.abs(this.speed * delta/1000);
 
          //Logger.getInstance().log("Pos x: " + this.actor.x +"  y:" + this.actor.y, Log.DEBUG);
          if (this.isComplete(this.actor)) {
@@ -308,7 +331,7 @@ module ex.Internal.Actions {
       }
 
       public isComplete(actor: Actor): boolean {
-         return this._stopped || (Math.abs(this.actor.rotation - this.start) >= this.distance);
+         return this._stopped || (this._traveled > Math.abs(this.distance));
       }
 
       public stop(): void {
@@ -318,6 +341,7 @@ module ex.Internal.Actions {
 
       public reset(): void {
          this._started = false;
+         this._traveled = 0;
       }
    }
 
@@ -830,8 +854,8 @@ module ex.Internal.Actions {
          this._actions = this.getActions();
          this._actions.forEach((action) => {
             action.reset();
-         })
-      this._completedActions = [];
+         });
+         this._completedActions = [];
       }
 
       public update(delta: number) {
@@ -842,6 +866,7 @@ module ex.Internal.Actions {
             if (this._currentAction.isComplete(this.actor)) {
                //Logger.getInstance().log("Action complete!", Log.DEBUG);
                this._completedActions.push(this._actions.shift());
+               this._currentAction.reset();
             }
          }
       }

@@ -156,6 +156,16 @@ var myActor = new MyActor(100, 100, 100, 100, Color.Azure);</pre>
       return val <= min ? min : (val >= max ? max : val);
    }
 
+   export function canonicalizeAngle(angle: number) {
+      
+      if (angle < 0) {
+         var multiple = Math.floor(Math.abs(angle) / (Math.PI * 2)) + 1;
+         angle += (Math.PI * 2) * multiple;
+      }
+      angle %= (Math.PI * 2); // normalize to a canonical
+      return angle;
+   }
+
    export function drawLine(ctx: CanvasRenderingContext2D, color: string, startx, starty, endx, endy) {
       ctx.beginPath();
       ctx.strokeStyle = color

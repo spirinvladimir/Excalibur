@@ -1,4 +1,4 @@
-/*! excalibur - v0.2.2 - 2014-04-27
+/*! excalibur - v0.2.2 - 2014-04-28
 * https://github.com/excaliburjs/Excalibur
 * Copyright (c) 2014 ; Licensed BSD*/
 if (typeof window == 'undefined') {
@@ -1454,6 +1454,16 @@ var ex;
             return val <= min ? min : (val >= max ? max : val);
         }
         Util.clamp = clamp;
+
+        function canonicalizeAngle(angle) {
+            if (angle < 0) {
+                var multiple = Math.floor(Math.abs(angle) / (Math.PI * 2)) + 1;
+                angle += (Math.PI * 2) * multiple;
+            }
+            angle %= (Math.PI * 2); // normalize to a canonical
+            return angle;
+        }
+        Util.canonicalizeAngle = canonicalizeAngle;
 
         function drawLine(ctx, color, startx, starty, endx, endy) {
             ctx.beginPath();
@@ -4307,21 +4317,46 @@ var ex;
             })();
             Actions.Meet = Meet;
 
+            (function (RotationStrategy) {
+                RotationStrategy[RotationStrategy["Clockwise"] = 0] = "Clockwise";
+                RotationStrategy[RotationStrategy["CounterClockwise"] = 1] = "CounterClockwise";
+                RotationStrategy[RotationStrategy["ShortestPath"] = 2] = "ShortestPath";
+            })(Actions.RotationStrategy || (Actions.RotationStrategy = {}));
+            var RotationStrategy = Actions.RotationStrategy;
+
             var RotateTo = (function () {
-                function RotateTo(actor, angleRadians, speed) {
+                function RotateTo(actor, angleRadians, speed, rotationStrategy) {
+                    if (typeof rotationStrategy === "undefined") { rotationStrategy = 2 /* ShortestPath */; }
                     this._started = false;
                     this._stopped = false;
+                    this._rotationStrategy = 2 /* ShortestPath */;
+                    this._traveled = 0;
                     this.actor = actor;
-                    this.end = angleRadians;
-                    this.speed = speed;
+
+                    this.end = ex.Util.canonicalizeAngle(angleRadians);
+                    this.speed = Math.abs(speed);
+                    this._rotationStrategy = rotationStrategy;
                 }
                 RotateTo.prototype.update = function (delta) {
                     if (!this._started) {
                         this._started = true;
-                        this.start = this.actor.rotation;
-                        this.distance = Math.abs(this.end - this.start);
+                        this.actor.rotation = ex.Util.canonicalizeAngle(this.actor.rotation);
+                        this.distance = this.end - this.actor.rotation;
+                        if (this._rotationStrategy === 2 /* ShortestPath */) {
+                            var clockwise = (this.distance);
+                            if (clockwise > 0) {
+                                this.speed = 1 * Math.abs(this.speed);
+                            } else {
+                                this.speed = -1 * Math.abs(this.speed);
+                            }
+                        } else if (this._rotationStrategy === 0 /* Clockwise */) {
+                            this.speed = 1 * Math.abs(this.speed);
+                        } else if (this._rotationStrategy === 1 /* CounterClockwise */) {
+                            this.speed = -1 * Math.abs(this.speed);
+                        }
                     }
                     this.actor.rx = this.speed;
+                    this._traveled += Math.abs(this.speed * delta / 1000);
 
                     //Logger.getInstance().log("Pos x: " + this.actor.x +"  y:" + this.actor.y, Log.DEBUG);
                     if (this.isComplete(this.actor)) {
@@ -4331,7 +4366,7 @@ var ex;
                 };
 
                 RotateTo.prototype.isComplete = function (actor) {
-                    return this._stopped || (Math.abs(this.actor.rotation - this.start) >= this.distance);
+                    return this._stopped || (this._traveled > Math.abs(this.distance));
                 };
 
                 RotateTo.prototype.stop = function () {
@@ -4341,6 +4376,7 @@ var ex;
 
                 RotateTo.prototype.reset = function () {
                     this._started = false;
+                    this._traveled = 0;
                 };
                 return RotateTo;
             })();
@@ -4804,6 +4840,7 @@ var ex;
                         if (this._currentAction.isComplete(this.actor)) {
                             //Logger.getInstance().log("Action complete!", Log.DEBUG);
                             this._completedActions.push(this._actions.shift());
+                            this._currentAction.reset();
                         }
                     }
                 };

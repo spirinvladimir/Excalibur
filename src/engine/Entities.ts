@@ -1130,7 +1130,7 @@ module ex {
          if (this._isKilled) {
             return;
          }
-
+         
          this.sceneNode.update(engine, delta);
          var eventDispatcher = this.eventDispatcher;
 
@@ -1168,7 +1168,7 @@ module ex {
                   // Publish collision events on both participants
                   eventDispatcher.publish('collision', new CollisionEvent(this, collider, side, intersectActor));
                   collider.eventDispatcher.publish('collision', new CollisionEvent(collider, this, ex.Util.getOppositeSide(side), intersectActor.scale(-1.0)));
-
+                  
                   // Send collision group updates
                   collider.collisionGroups.forEach((group)=>{
                      if(this._collisionHandlers[group]){
