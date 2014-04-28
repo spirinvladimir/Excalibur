@@ -1,4 +1,4 @@
-﻿var __extends = this.__extends || function (d, b) {
+var __extends = this.__extends || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
     __.prototype = b.prototype;
@@ -2770,11 +2770,6 @@ var ex;
                                 });
                             }
                         });
-                        if (this.collisionType === 4 /* Fixed */ && collider.collisionType !== 1 /* Passive */) {
-                            // If you are fixed collision type move others out of your way
-                            collider.x -= intersectActor.x;
-                            collider.y -= intersectActor.y;
-                        }
 
                         // If the actor is active push the actor out if its not passive
                         if ((this.collisionType === 2 /* Active */ || this.collisionType === 3 /* Elastic */) && collider.collisionType !== 1 /* Passive */) {
@@ -2818,12 +2813,6 @@ var ex;
                             //var intersectMap = map.getOverlap(this);
                             this.y += intersectMap.y;
                             this.x += intersectMap.x;
-
-                            if (Math.abs(intersectMap.y) > Math.abs(intersectMap.x)) {
-                                this.dy = 0;
-                            } else {
-                                this.dx = 0;
-                            }
 
                             // Naive elastic bounce
                             if (this.collisionType === 3 /* Elastic */ && !hasBounced) {

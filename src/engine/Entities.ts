@@ -1173,13 +1173,7 @@ module ex {
                         });
                      }
                   });
-                  if(this.collisionType === CollisionType.Fixed && collider.collisionType !== CollisionType.Passive){
-                     // If you are fixed collision type move others out of your way
-                     collider.x -= intersectActor.x;
-                     collider.y -= intersectActor.y;
-                  }
-
-
+                  
                   // If the actor is active push the actor out if its not passive
                   if((this.collisionType === CollisionType.Active || this.collisionType === CollisionType.Elastic) && collider.collisionType !== CollisionType.Passive){
                      if(this.collisionStrategy === ex.CollisionStrategy.SeparatingAxis){
@@ -1223,14 +1217,7 @@ module ex {
                      //var intersectMap = map.getOverlap(this);
                       this.y += intersectMap.y;
                       this.x += intersectMap.x;
-
-                      if (Math.abs(intersectMap.y) > Math.abs(intersectMap.x)) {
-                        this.dy = 0;
-                       
-                      } else {
-                        this.dx = 0;
-                      }
-
+                      
                      // Naive elastic bounce
                      if(this.collisionType === CollisionType.Elastic && !hasBounced){
                         hasBounced = true;
