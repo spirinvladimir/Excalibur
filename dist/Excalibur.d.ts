@@ -2942,6 +2942,12 @@ declare module ex {
         */
         public toString(): string;
         /**
+        * Returns a CSS string representation of a color.
+        * @method fillStyle
+        * @returns string
+        */
+        public fillStyle(): string;
+        /**
         * Returns a clone of the current color.
         * @method clone
         * @returns Color
@@ -4520,6 +4526,7 @@ declare module ex {
         * @param total {number} Total number of bytes to load
         */
         private drawLoadingBar(ctx, loaded, total);
+        private drawPolarLoadingBar(ctx, loaded, total);
         /**
         * Sets the loading screen draw function if you want to customize the draw
         * @method setLoadingDrawFunction
